@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+
+[project]
+name = "pylovens"
+authors = [
+    {name = "Rogier van der Geer", email = "rogier@vander-geer.nl"},
+]
+description = "Python client for the Lovens API."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "requests>=2.31.0",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = ["black==23.3.0", "pytest>=7.3.1"]
+
+[tool.setuptools_scm]
+write_to = "src/pylovens/_version.py"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
