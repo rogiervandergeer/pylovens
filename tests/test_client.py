@@ -1,5 +1,7 @@
+from datetime import date, datetime
 from itertools import islice
 from os import environ
+from zoneinfo import ZoneInfo
 
 from pytest import mark, raises
 
@@ -64,3 +66,66 @@ class TestApi:
             )
             assert len(locations) > 0
             break
+
+
+@mark.skipif("LOVENS_USERNAME" not in environ or "LOVENS_PASSWORD" not in environ, reason="Requires authentication.")
+class TestStatistics:
+    def test_get_daily_statistics(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_statistics(bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5))
+        assert len(stats) == 5  # There are 5 days in the range.
+        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+
+    def test_get_hourly_statistics(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_statistics(
+            bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5), type="hourly"
+        )
+        assert len(stats) == 5 * 24  # There are 5 days * 24 hours in the range.
+        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+
+    def test_get_monthly_statistics(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_statistics(
+            bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5), type="monthly"
+        )
+        assert len(stats) == 1  # The range falls in one month.
+        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+
+    def test_stats_date_tz(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_statistics(
+            bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5), tz="Asia/Singapore"
+        )
+        assert len(stats) == 5  # There are 5 days in the range.
+        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
+        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Asia/Singapore"))
+
+    def test_stats_datetime_naive(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_statistics(
+            bike_id, start_date=datetime(2023, 4, 1, 0, 0), end_date=datetime(2023, 4, 1, 12, 59, 59), type="hourly"
+        )
+        assert len(stats) == 13
+        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[-1]["till"] == datetime(2023, 4, 1, 12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+
+    def test_stats_datetime_tz(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_statistics(
+            bike_id,
+            start_date=datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")),
+            end_date=datetime(2023, 4, 1, 12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")),
+            type="hourly",
+        )
+        assert len(stats) == 13
+        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[-1]["till"] == datetime(2023, 4, 1, 12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+
+    def test_stats_datetime_partial(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_statistics(
+            bike_id,
+            start_date=datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")),
+            end_date=datetime(2023, 4, 1, 12, 30, 0, tzinfo=ZoneInfo("Europe/Amsterdam")),
+            type="hourly",
+        )
+        assert len(stats) == 13
+        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[-1]["till"] == datetime(2023, 4, 1, 12, 30, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))

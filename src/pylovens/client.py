@@ -1,15 +1,17 @@
 from base64 import b64encode, urlsafe_b64encode
-from datetime import datetime
+from datetime import datetime, date, time
 from hashlib import sha256
 from json import dumps
 from os import urandom
 from re import sub
 from typing import Iterable
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 from requests import get, post
 
 from pylovens._version import __version_tuple__
+from pylovens.utils import parse_datetimes
 
 
 class LovensClient:
@@ -45,6 +47,73 @@ class LovensClient:
         yield from data["data"]
         if data["meta"]["total_records"] > data["meta"]["offset"] + data["meta"]["limit"]:
             yield from self.get_rides(bike_id=bike_id, batch_size=batch_size, offset=offset + batch_size)
+
+    def get_statistics(
+        self,
+        bike_id: int,
+        start_date: date | datetime,
+        end_date: date | datetime,
+        type: str = "daily",
+        tz: ZoneInfo | str = "Europe/Amsterdam",
+        parse_timestamps: bool = True,
+    ) -> list[dict]:
+        """Get ride statistics for a bike.
+
+        If start_date and/or end_date is a date object, they are interpreted as the start and end of the day
+        respectively. Timezone-naive datetime objects are converted to the timezone as passed to the tz argument.
+
+        Note that this endpoint expects the end_date, if it is a datetime, to be one second before the start of the
+        next bin. E.g. daily statistics for the month of January 2023 can be obtained by calling
+            get_statistics(123, start_date=datetime(2023, 1, 1, 0, 0), end_date=datetime(2023, 1, 31, 23, 59, 59)).
+        Passing datetime(2023, 2, 1, 0, 0) as end_date instead will return in an extra 0-second bin at the end.
+
+        Args:
+            bike_id: The ID of the bike.
+            start_date: Start date or datetime.
+            end_date: End date or datetime (inclusive).
+            type: Aggregation level. One of "hourly", "daily" or "monthly". Defaults to "daily".
+            tz: Timezone to aggregate in. Defaults to "Europe/Amsterdam".
+            parse_timestamps: If True, parse resulting timestamps into datetime objects. Defaults to True.
+
+        Returns:
+            A list of dictionaries of the following form:
+              {
+                'from': datetime(2023, 4, 30, 0, 0, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
+                'till': datetime(2023, 4, 30, 23, 59, 59, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
+                'c02': 2584,
+                'calories': 156,
+                'avg_speed': 18,
+                'distance_traveled': 10379,
+                'avg_power_distribution': 83,
+                'shift_advice': 0,
+                'top_speed': 28,
+                'elevation_up': 238,
+                'elevation_down': 232
+              }
+        """
+        if isinstance(tz, str):
+            tz = ZoneInfo(tz)
+        if not isinstance(start_date, datetime):
+            start_date = datetime.combine(start_date, time(0, 0, tzinfo=tz))
+        elif start_date.tzinfo is None:
+            start_date = start_date.astimezone(tz)
+        if not isinstance(end_date, datetime):
+            end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=tz))
+        elif end_date.tzinfo is None:
+            end_date = end_date.astimezone(tz)
+
+        response = get(
+            f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/stats?"
+            f"from={quote(start_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}&"
+            f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}&"
+            f"type={type}&tz={tz.key}",
+            headers=self._headers_with_auth,
+        )
+        response.raise_for_status()
+        if parse_timestamps:
+            return [parse_datetimes(stat, keys={"from", "till"}, timezone=tz) for stat in response.json()]
+        else:
+            return response.json()
 
     def login(self, username: str, password: str) -> None:
         token = self._get_aws_cognito_token(username, password)
