@@ -8,6 +8,11 @@ from pytest import mark, raises
 from pylovens import LovensClient
 
 
+if_authenticated = mark.skipif(
+    "LOVENS_USERNAME" not in environ or "LOVENS_PASSWORD" not in environ, reason="Requires authentication."
+)
+
+
 class TestHeaders:
     def test_user_agent(self, client: LovensClient):
         headers = client._headers
@@ -37,15 +42,13 @@ class TestLogin:
         client_id = client._get_aws_cognito_client_id()
         assert len(client_id) > 0
 
-    @mark.skipif(
-        "LOVENS_USERNAME" not in environ or "LOVENS_PASSWORD" not in environ, reason="Requires authentication."
-    )
+    @if_authenticated
     def test_get_aws_cognito_token(self, client: LovensClient):
         token = client._get_aws_cognito_token(username=environ["LOVENS_USERNAME"], password=environ["LOVENS_PASSWORD"])
         assert len(token) > 0
 
 
-@mark.skipif("LOVENS_USERNAME" not in environ or "LOVENS_PASSWORD" not in environ, reason="Requires authentication.")
+@if_authenticated
 class TestApi:
     def test_get_bikes(self, authenticated_client):
         bikes = authenticated_client.get_bikes()
@@ -69,7 +72,7 @@ class TestApi:
             break
 
 
-@mark.skipif("LOVENS_USERNAME" not in environ or "LOVENS_PASSWORD" not in environ, reason="Requires authentication.")
+@if_authenticated
 class TestStatistics:
     def test_get_daily_statistics(self, authenticated_client: LovensClient, bike_id: int):
         stats = authenticated_client.get_statistics(bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5))
