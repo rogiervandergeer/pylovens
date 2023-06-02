@@ -57,7 +57,8 @@ class LovensClient:
         tz: ZoneInfo | str = "Europe/Amsterdam",
         parse_timestamps: bool = True,
     ) -> list[dict]:
-        """Get ride statistics for a bike.
+        """
+        Get ride statistics for a bike.
 
         If start_date and/or end_date is a date object, they are interpreted as the start and end of the day
         respectively. Timezone-naive datetime objects are converted to the timezone as passed to the tz argument.
@@ -116,6 +117,13 @@ class LovensClient:
             return response.json()
 
     def login(self, username: str, password: str) -> None:
+        """
+        Log in using your username (e-mail address) and password.
+
+        Args:
+            username: Your e-mail address.
+            password: The corresponding password.
+        """
         token = self._get_aws_cognito_token(username, password)
         challenge, verifier = self._create_code_challenge()
         challenge_result = self._send_code_challenge(challenge, token)
@@ -132,6 +140,7 @@ class LovensClient:
 
     @property
     def _login_settings(self) -> dict:
+        """Return the login settings corresponding to our client ID."""
         if self._login_settings_ is None:
             response = get(
                 f"https://api.ids.conneq.tech/client/{self.client_id}/setting/loginpage", headers=self._headers
@@ -173,6 +182,7 @@ class LovensClient:
         return response.json()["AuthenticationResult"]["AccessToken"]
 
     def _get_access_token(self, code: str, verifier: str) -> str:
+        """Sign in with Lovens using the previously obtained code and obtain the bearer token."""
         redirect_uri = self._login_settings["login_page_allowed_redirect_uris"][0]
         content = f"""code={code}&code_verifier={verifier}&redirect_uri={redirect_uri}&grant_type=authorization_code"""
         response = post(
@@ -188,6 +198,7 @@ class LovensClient:
         return response.json()["access_token"]
 
     def _send_code_challenge(self, code_challenge: str, cognito_token: str) -> str:
+        """Send a code challenge and the AWS Cognito token."""
         return post(
             "https://api.ids.conneq.tech/oauth",
             data=dumps(
