@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from requests import get, post
 
-from pylovens._version import __version_tuple__
+from pylovens._version import __version__
 from pylovens.utils import parse_datetimes
 
 
@@ -213,7 +213,7 @@ class LovensClient:
     @property
     def _headers(self) -> dict[str, str]:
         """Get the HTTP headers to be sent with every request."""
-        return {"User-Agent": f"pylovens {'.'.join([str(v) for v in __version_tuple__[:-1]])}"}
+        return {"User-Agent": f"pylovens {__version__.split('+')[0]}"}
 
     @property
     def _headers_with_auth(self) -> dict[str, str]:

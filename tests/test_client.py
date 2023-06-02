@@ -13,6 +13,7 @@ class TestHeaders:
         headers = client._headers
         assert headers["User-Agent"].startswith("pylovens ")
         assert len(headers["User-Agent"].split(".")) in (3, 4)  # Either pylovens x.y.z or pylovens x.y.z.dev0
+        assert "+" not in headers["User-Agent"]
 
     def test_headers_with_auth_without_token(self, client: LovensClient):
         with raises(ValueError):
