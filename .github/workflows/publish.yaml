@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install Dependencies
+      - name: Build
         run: |
           pip3 install build
           python3 -m build
