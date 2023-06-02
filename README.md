@@ -2,6 +2,11 @@
 
 Python client for the Lovens API.
 
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/rogiervandergeer/pylovens/test.yaml) 
+![PyPI](https://img.shields.io/pypi/v/pylovens)
+![PyPI - License](https://img.shields.io/pypi/l/pylovens)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/pylovens) 
+
 ## Usage
 
 Using the client is as simple as:
