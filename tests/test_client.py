@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from itertools import islice
 from os import environ
 from zoneinfo import ZoneInfo
@@ -46,6 +46,28 @@ class TestLogin:
     def test_get_aws_cognito_token(self, client: LovensClient):
         token = client._get_aws_cognito_token(username=environ["LOVENS_USERNAME"], password=environ["LOVENS_PASSWORD"])
         assert len(token) > 0
+
+
+@if_authenticated
+class TestBattery:
+    def test_get_battery_state(self, authenticated_client: LovensClient, bike_id: int):
+        state = authenticated_client.get_battery_state(bike_id)
+        assert "battery_percentage" in state
+
+    def test_get_battery_statistics(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_battery_statistics(bike_id)
+        seconds = (max(map(lambda x: x["date"], stats)) - min(map(lambda x: x["date"], stats))).total_seconds()
+        assert 85400 <= seconds <= 87400  # Assert we have 24 hours +- 15 minutes
+
+    def test_statistics_no_end_date(self, authenticated_client: LovensClient, bike_id: int):
+        stats = authenticated_client.get_battery_statistics(bike_id, start_date=datetime.now() - timedelta(hours=3))
+        assert 10 <= len(stats) <= 14
+
+    def test_statistics_start_date_after_end_date(self, authenticated_client: LovensClient, bike_id: int):
+        with raises(HTTPError):
+            authenticated_client.get_battery_statistics(
+                bike_id, start_date=datetime.now() - timedelta(hours=3), end_date=datetime.now() - timedelta(hours=5)
+            )
 
 
 @if_authenticated

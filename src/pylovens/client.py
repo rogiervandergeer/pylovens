@@ -22,6 +22,94 @@ class LovensClient:
         self.access_token: str | None = None
         self._login_settings_: dict | None = None
 
+    def get_battery_state(self, bike_id: int) -> dict[str]:
+        """
+        Get the state of the battery of a bike.
+
+        Args:
+            bike_id: The ID of the bike.
+
+        Returns:
+            A dictionary of the following form:
+              {
+                'current': -450,
+                'battery_percentage': 69,
+                'last_battery_update': '2023-04-30T09:01:48+0000',
+                'last_full_charge': '2023-04-29T19:03:22+0000'
+                'charging': False,
+                'range': 30
+              }
+        """
+        response = get(
+            f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/battery/current-state", headers=self._headers_with_auth
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_battery_statistics(
+        self,
+        bike_id: int,
+        start_date: date | datetime | None = None,
+        end_date: date | datetime | None = None,
+        tz: ZoneInfo | str = "Europe/Amsterdam",
+        parse_timestamps: bool = True,
+    ):
+        """
+        Get historical state of the battery of a bike.
+
+        If start_date is not provided or None, it defaults to 24 hours ago.
+        If end_date is not provided or None, it defaults to now.
+
+        If start_date and/or end_date is a date object, they are interpreted as the start and end of the day
+        respectively. Timezone-naive datetime objects are converted to the timezone as passed to the tz argument.
+
+        Args:
+            bike_id: The ID of the bike.
+            start_date: Optional start date or datetime.
+            end_date: Optional end date or datetime (inclusive).
+            tz: Timezone to aggregate in. Defaults to "Europe/Amsterdam".
+            parse_timestamps: If True, parse resulting timestamps into datetime objects. Defaults to True.
+
+        Returns:
+            A list of dictionaries of the following form:
+              {
+                'date': datetime(2023, 4, 30, 0, 0, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
+                'battery_percentage': 69,
+                'charging': False,
+                'seconds_in_ride': 0,
+                'seconds_charging': 0,
+              }
+
+            Note that 'battery_percentage' is None when the battery is removed.
+        """
+        if isinstance(tz, str):
+            tz = ZoneInfo(tz)
+        if start_date is not None:
+            if not isinstance(start_date, datetime):
+                start_date = datetime.combine(start_date, time(0, 0, tzinfo=tz))
+            elif start_date.tzinfo is None:
+                start_date = start_date.astimezone(tz)
+        if end_date is not None:
+            if not isinstance(end_date, datetime):
+                end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=tz))
+            elif end_date.tzinfo is None:
+                end_date = end_date.astimezone(tz)
+
+        url = f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/battery?"
+        if start_date is not None:
+            url += f"from={quote(start_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}"
+            if end_date is not None:
+                url += "&"
+        if end_date is not None:
+            url += f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}"
+
+        response = get(url, headers=self._headers_with_auth)
+        response.raise_for_status()
+        if parse_timestamps:
+            return [parse_datetimes(stat, keys={"date"}, timezone=tz) for stat in response.json()]
+        else:
+            return response.json()
+
     def get_bikes(self) -> list[dict]:
         response = get("https://lovens.api.bike.conneq.tech/bike", headers=self._headers_with_auth)
         response.raise_for_status()
