@@ -1,5 +1,6 @@
 from base64 import b64encode, urlsafe_b64encode
 from datetime import datetime, date, time
+from functools import partial
 from hashlib import sha256
 from itertools import islice
 from json import dumps
@@ -12,7 +13,6 @@ from zoneinfo import ZoneInfo
 from requests import get, post
 
 from pylovens._version import __version__
-from pylovens.utils import parse_datetimes
 
 
 class LovensClient:
@@ -53,7 +53,6 @@ class LovensClient:
         bike_id: int,
         start_date: date | datetime | None = None,
         end_date: date | datetime | None = None,
-        parse_timestamps: bool = True,
     ):
         """
         Get historical state of the battery of a bike.
@@ -68,7 +67,6 @@ class LovensClient:
             bike_id: The ID of the bike.
             start_date: Optional start date or datetime.
             end_date: Optional end date or datetime (inclusive).
-            parse_timestamps: If True, parse resulting timestamps into datetime objects. Defaults to True.
 
         Returns:
             A list of dictionaries of the following form:
@@ -103,10 +101,7 @@ class LovensClient:
 
         response = get(url, headers=self._headers_with_auth)
         response.raise_for_status()
-        if parse_timestamps:
-            return [parse_datetimes(stat, keys={"date"}, timezone=self.timezone) for stat in response.json()]
-        else:
-            return response.json()
+        return list(map(self._parse_dates, response.json()))
 
     def get_bikes(self) -> list[dict]:
         response = get("https://lovens.api.bike.conneq.tech/bike", headers=self._headers_with_auth)
@@ -205,7 +200,6 @@ class LovensClient:
         start_date: date | datetime,
         end_date: date | datetime,
         type: str = "daily",
-        parse_timestamps: bool = True,
     ) -> list[dict]:
         """
         Get ride statistics for a bike.
@@ -258,10 +252,7 @@ class LovensClient:
             headers=self._headers_with_auth,
         )
         response.raise_for_status()
-        if parse_timestamps:
-            return [parse_datetimes(stat, keys={"from", "till"}, timezone=self.timezone) for stat in response.json()]
-        else:
-            return response.json()
+        return list(map(partial(self._parse_dates, keys={"from", "till"}), response.json()))
 
     def get_user(self) -> dict:
         """
@@ -409,7 +400,7 @@ class LovensClient:
         """Parse datetimes in a dictionary."""
         return {
             key: datetime.strptime(value, "%Y-%m-%dT%H:%M:%S%z").astimezone(self.timezone)
-            if (keys is not None and key in keys) or (keys is None and key.endswith("_date"))
+            if (keys is not None and key in keys) or (keys is None and (key.endswith("_date") or key == "date"))
             else value
             for key, value in data.items()
         }
