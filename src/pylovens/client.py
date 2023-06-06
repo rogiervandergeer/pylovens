@@ -21,6 +21,7 @@ class LovensClient:
     def __init__(self):
         self.access_token: str | None = None
         self._login_settings_: dict | None = None
+        self._timezone: str | None = None
 
     def get_battery_state(self, bike_id: int) -> dict[str]:
         """
@@ -204,6 +205,25 @@ class LovensClient:
         else:
             return response.json()
 
+    def get_user(self) -> dict:
+        """
+        Get information on the user.
+
+        Returns:
+            An extensive dictionary with details on the user, including the following keys and many more:
+            {
+                "id": 1234,
+                "name": "Your Name",
+                "creation_date": "2023-01-01T00:00:00+0200",
+                "email": "your@mail.address",
+                "timezone": "Europe/Amsterdam",
+                ...
+            }
+        """
+        response = get(f"https://lovens.api.bike.conneq.tech/user/me", headers=self._headers_with_auth)
+        response.raise_for_status()
+        return response.json()
+
     def login(self, username: str, password: str) -> None:
         """
         Log in using your username (e-mail address) and password.
@@ -216,6 +236,12 @@ class LovensClient:
         challenge, verifier = self._create_code_challenge()
         challenge_result = self._send_code_challenge(challenge, token)
         self.access_token = self._get_access_token(code=challenge_result, verifier=verifier)
+
+    @property
+    def timezone(self) -> str:
+        if self._timezone is None:
+            self._timezone = self.get_user()["timezone"]
+        return self._timezone
 
     @staticmethod
     def _create_code_challenge() -> tuple[str, str]:

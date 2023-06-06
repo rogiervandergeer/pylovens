@@ -71,7 +71,16 @@ class TestBattery:
 
 
 @if_authenticated
-class TestApi:
+class TestSimpleMethods:
+    def test_user(self, authenticated_client: LovensClient):
+        user = authenticated_client.get_user()
+        assert "timezone" in user
+        assert "username" in user
+
+    def test_timezone(self, authenticated_client: LovensClient):
+        # Timezone in the format 'Europe/Amsterdam'
+        assert "/" in authenticated_client.timezone
+
     def test_get_bikes(self, authenticated_client):
         bikes = authenticated_client.get_bikes()
         assert len(bikes) > 0
