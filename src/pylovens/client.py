@@ -52,7 +52,6 @@ class LovensClient:
         bike_id: int,
         start_date: date | datetime | None = None,
         end_date: date | datetime | None = None,
-        tz: ZoneInfo | str = "Europe/Amsterdam",
         parse_timestamps: bool = True,
     ):
         """
@@ -62,13 +61,12 @@ class LovensClient:
         If end_date is not provided or None, it defaults to now.
 
         If start_date and/or end_date is a date object, they are interpreted as the start and end of the day
-        respectively. Timezone-naive datetime objects are converted to the timezone as passed to the tz argument.
+        respectively. Timezone-naive datetime objects are converted to the user's timezone (see get_user).
 
         Args:
             bike_id: The ID of the bike.
             start_date: Optional start date or datetime.
             end_date: Optional end date or datetime (inclusive).
-            tz: Timezone to aggregate in. Defaults to "Europe/Amsterdam".
             parse_timestamps: If True, parse resulting timestamps into datetime objects. Defaults to True.
 
         Returns:
@@ -83,18 +81,16 @@ class LovensClient:
 
             Note that 'battery_percentage' is None when the battery is removed.
         """
-        if isinstance(tz, str):
-            tz = ZoneInfo(tz)
         if start_date is not None:
             if not isinstance(start_date, datetime):
-                start_date = datetime.combine(start_date, time(0, 0, tzinfo=tz))
+                start_date = datetime.combine(start_date, time(0, 0, tzinfo=self.timezone))
             elif start_date.tzinfo is None:
-                start_date = start_date.astimezone(tz)
+                start_date = start_date.astimezone(self.timezone)
         if end_date is not None:
             if not isinstance(end_date, datetime):
-                end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=tz))
+                end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=self.timezone))
             elif end_date.tzinfo is None:
-                end_date = end_date.astimezone(tz)
+                end_date = end_date.astimezone(self.timezone)
 
         url = f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/battery?"
         if start_date is not None:
@@ -107,7 +103,7 @@ class LovensClient:
         response = get(url, headers=self._headers_with_auth)
         response.raise_for_status()
         if parse_timestamps:
-            return [parse_datetimes(stat, keys={"date"}, timezone=tz) for stat in response.json()]
+            return [parse_datetimes(stat, keys={"date"}, timezone=self.timezone) for stat in response.json()]
         else:
             return response.json()
 
@@ -143,14 +139,13 @@ class LovensClient:
         start_date: date | datetime,
         end_date: date | datetime,
         type: str = "daily",
-        tz: ZoneInfo | str = "Europe/Amsterdam",
         parse_timestamps: bool = True,
     ) -> list[dict]:
         """
         Get ride statistics for a bike.
 
         If start_date and/or end_date is a date object, they are interpreted as the start and end of the day
-        respectively. Timezone-naive datetime objects are converted to the timezone as passed to the tz argument.
+        respectively. Timezone-naive datetime objects are converted to the user's timezone (see get_user).
 
         Note that this endpoint expects the end_date, if it is a datetime, to be one second before the start of the
         next bin. E.g. daily statistics for the month of January 2023 can be obtained by calling
@@ -162,7 +157,6 @@ class LovensClient:
             start_date: Start date or datetime.
             end_date: End date or datetime (inclusive).
             type: Aggregation level. One of "hourly", "daily" or "monthly". Defaults to "daily".
-            tz: Timezone to aggregate in. Defaults to "Europe/Amsterdam".
             parse_timestamps: If True, parse resulting timestamps into datetime objects. Defaults to True.
 
         Returns:
@@ -181,27 +175,25 @@ class LovensClient:
                 'elevation_down': 232
               }
         """
-        if isinstance(tz, str):
-            tz = ZoneInfo(tz)
         if not isinstance(start_date, datetime):
-            start_date = datetime.combine(start_date, time(0, 0, tzinfo=tz))
+            start_date = datetime.combine(start_date, time(0, 0, tzinfo=self.timezone))
         elif start_date.tzinfo is None:
-            start_date = start_date.astimezone(tz)
+            start_date = start_date.astimezone(self.timezone)
         if not isinstance(end_date, datetime):
-            end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=tz))
+            end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=self.timezone))
         elif end_date.tzinfo is None:
-            end_date = end_date.astimezone(tz)
+            end_date = end_date.astimezone(self.timezone)
 
         response = get(
             f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/stats?"
             f"from={quote(start_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}&"
             f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}&"
-            f"type={type}&tz={tz.key}",
+            f"type={type}&tz={self.timezone.key}",
             headers=self._headers_with_auth,
         )
         response.raise_for_status()
         if parse_timestamps:
-            return [parse_datetimes(stat, keys={"from", "till"}, timezone=tz) for stat in response.json()]
+            return [parse_datetimes(stat, keys={"from", "till"}, timezone=self.timezone) for stat in response.json()]
         else:
             return response.json()
 
@@ -238,10 +230,10 @@ class LovensClient:
         self.access_token = self._get_access_token(code=challenge_result, verifier=verifier)
 
     @property
-    def timezone(self) -> str:
+    def timezone(self) -> ZoneInfo:
         if self._timezone is None:
             self._timezone = self.get_user()["timezone"]
-        return self._timezone
+        return ZoneInfo(self._timezone)
 
     @staticmethod
     def _create_code_challenge() -> tuple[str, str]:

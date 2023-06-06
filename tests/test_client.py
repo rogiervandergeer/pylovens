@@ -79,7 +79,7 @@ class TestSimpleMethods:
 
     def test_timezone(self, authenticated_client: LovensClient):
         # Timezone in the format 'Europe/Amsterdam'
-        assert "/" in authenticated_client.timezone
+        assert isinstance(authenticated_client.timezone, ZoneInfo)
 
     def test_get_bikes(self, authenticated_client):
         bikes = authenticated_client.get_bikes()
@@ -128,9 +128,9 @@ class TestStatistics:
         assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
 
     def test_stats_date_tz(self, authenticated_client: LovensClient, bike_id: int):
-        stats = authenticated_client.get_statistics(
-            bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5), tz="Asia/Singapore"
-        )
+        authenticated_client._timezone = "Asia/Singapore"
+        stats = authenticated_client.get_statistics(bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5))
+        authenticated_client._timezone = None
         assert len(stats) == 5  # There are 5 days in the range.
         assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
         assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Asia/Singapore"))
