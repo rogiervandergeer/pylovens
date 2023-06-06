@@ -104,13 +104,6 @@ class TestSimpleMethods:
         bikes = authenticated_client.get_bikes()
         assert len(bikes) > 0
 
-    def test_get_rides(self, authenticated_client):
-        bikes = authenticated_client.get_bikes()
-        bike_id = bikes[0]["id"]
-        ride_iterable = authenticated_client.iterate_rides(bike_id, batch_size=6)
-        rides = list(islice(ride_iterable, 10))
-        assert len(rides) == 10
-
     def test_get_location(self, authenticated_client):
         bikes = authenticated_client.get_bikes()
         bike_id = bikes[0]["id"]

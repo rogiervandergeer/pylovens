@@ -184,14 +184,14 @@ class LovensClient:
         response = get(
             f"https://lovens.api.bike.conneq.tech/v2/bike/{bike_id}/ride?"
             f"limit={batch_size}&"
-            f"_offset={_offset}&"
+            f"offset={_offset}&"
             f"order%5B%5D=start_date%3B{'desc' if newest_first else 'asc'}",
             headers=self._headers_with_auth,
         )
         response.raise_for_status()
         data = response.json()
         yield from map(self._parse_dates, data["data"])
-        if data["meta"]["total_records"] > data["meta"]["_offset"] + data["meta"]["limit"]:
+        if data["meta"]["total_records"] > data["meta"]["offset"] + data["meta"]["limit"]:
             yield from self.iterate_rides(bike_id=bike_id, batch_size=batch_size, _offset=_offset + batch_size)
 
     def get_statistics(
@@ -217,14 +217,13 @@ class LovensClient:
             start_date: Start date or datetime.
             end_date: End date or datetime (inclusive).
             type: Aggregation level. One of "hourly", "daily" or "monthly". Defaults to "daily".
-            parse_timestamps: If True, parse resulting timestamps into datetime objects. Defaults to True.
 
         Returns:
             A list of dictionaries of the following form:
               {
                 'from': datetime(2023, 4, 30, 0, 0, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
                 'till': datetime(2023, 4, 30, 23, 59, 59, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
-                'c02': 2584,
+                'co2': 2584,
                 'calories': 156,
                 'avg_speed': 18,
                 'distance_traveled': 10379,
