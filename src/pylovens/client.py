@@ -1,6 +1,7 @@
 from base64 import b64encode, urlsafe_b64encode
 from datetime import datetime, date, time
 from hashlib import sha256
+from itertools import islice
 from json import dumps
 from os import urandom
 from re import sub
@@ -121,17 +122,82 @@ class LovensClient:
         response.raise_for_status()
         return response.json()
 
-    def get_rides(self, bike_id: int, batch_size: int = 50, offset: int = 0) -> Iterable[dict]:
+    def get_rides(self, bike_id: int, newest_first: bool = True, n: int = 50) -> list[dict]:
+        """
+        Fetch a lift of rides of a bike.
+
+        If you are interested in fetching all rides of a bike, or are not sure how many you need,
+        consider using iterate_rides.
+
+        Args:
+            bike_id: The ID of the bike.
+            newest_first: If True, fetch the most recent ride first. Defaults to True.
+            n: Number of rides to fetch. Defaults to 50.
+
+        Returns:
+            An iterables of dictionaries describing the rides.
+            Each dictionary contains, among others, the following keys:
+            {
+                "id": 123456,
+                "start_date": datetime(2023, 4, 1, 17, 1, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "end_date": datetime(2023, 4, 1, 17, 6, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "calories": 14,
+                "avg_speed": 21,
+                "distance_traveled": 1234,
+                "bike_id": 123,
+                "user_id": 1234,
+                "user": { <same as output of get_user()> },
+                "creation_date": datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "active_time": 330,
+                "timezone": "Europe/Amsterdam",
+                ...
+            }
+        """
+        return list(islice(self.iterate_rides(bike_id=bike_id, newest_first=newest_first), n))
+
+    def iterate_rides(
+        self, bike_id: int, newest_first: bool = True, batch_size: int = 50, _offset: int = 0
+    ) -> Iterable[dict]:
+        """
+        Iterate through the rides of a bike.
+
+        Args:
+            bike_id: The ID of the bike.
+            newest_first: If True, fetch the most recent ride first. Defaults to True.
+            batch_size: The number of rides to fetch at once.
+            _offset: Used in pagination.
+
+        Returns:
+            An iterables of dictionaries describing the rides.
+            Each dictionary contains, among others, the following keys:
+            {
+                "id": 123456,
+                "start_date": datetime(2023, 4, 1, 17, 1, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "end_date": datetime(2023, 4, 1, 17, 6, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "calories": 14,
+                "avg_speed": 21,
+                "distance_traveled": 1234,
+                "bike_id": 123,
+                "user_id": 1234,
+                "user": { <same as output of get_user()> },
+                "creation_date": datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "active_time": 330,
+                "timezone": "Europe/Amsterdam",
+                ...
+            }
+        """
         response = get(
             f"https://lovens.api.bike.conneq.tech/v2/bike/{bike_id}/ride?"
-            f"limit={batch_size}&offset={offset}&order%5B%5D=start_date%3Bdesc",
+            f"limit={batch_size}&"
+            f"_offset={_offset}&"
+            f"order%5B%5D=start_date%3B{'desc' if newest_first else 'asc'}",
             headers=self._headers_with_auth,
         )
         response.raise_for_status()
         data = response.json()
-        yield from data["data"]
-        if data["meta"]["total_records"] > data["meta"]["offset"] + data["meta"]["limit"]:
-            yield from self.get_rides(bike_id=bike_id, batch_size=batch_size, offset=offset + batch_size)
+        yield from map(self._parse_dates, data["data"])
+        if data["meta"]["total_records"] > data["meta"]["_offset"] + data["meta"]["limit"]:
+            yield from self.iterate_rides(bike_id=bike_id, batch_size=batch_size, _offset=_offset + batch_size)
 
     def get_statistics(
         self,
@@ -338,3 +404,12 @@ class LovensClient:
         if self.access_token is None:
             raise ValueError("Not authenticated.")
         return {"Authorization": f"Bearer {self.access_token}", **self._headers}
+
+    def _parse_dates(self, data: dict[str], keys: set[str] | None = None) -> dict[str]:
+        """Parse datetimes in a dictionary."""
+        return {
+            key: datetime.strptime(value, "%Y-%m-%dT%H:%M:%S%z").astimezone(self.timezone)
+            if (keys is not None and key in keys) or (keys is None and key.endswith("_date"))
+            else value
+            for key, value in data.items()
+        }

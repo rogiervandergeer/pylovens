@@ -71,6 +71,25 @@ class TestBattery:
 
 
 @if_authenticated
+class TestRides:
+    def test_iterate_rides(self, authenticated_client: LovensClient, bike_id: int):
+        rides = authenticated_client.iterate_rides(bike_id)
+        for ride in rides:
+            assert isinstance(ride, dict)
+            assert isinstance(ride["creation_date"], datetime)
+            break
+
+    def test_offset(self, authenticated_client: LovensClient, bike_id: int):
+        rides = islice(authenticated_client.iterate_rides(bike_id, batch_size=2), 3)
+        assert len({ride["id"] for ride in rides}) == 3
+
+    @mark.parametrize("newest_first", [False, True])
+    def test_newest_first(self, authenticated_client: LovensClient, bike_id: int, newest_first: bool):
+        rides = authenticated_client.get_rides(bike_id, n=2, newest_first=newest_first)
+        assert (rides[0]["creation_date"] > rides[1]["creation_date"]) == newest_first
+
+
+@if_authenticated
 class TestSimpleMethods:
     def test_user(self, authenticated_client: LovensClient):
         user = authenticated_client.get_user()
@@ -88,14 +107,14 @@ class TestSimpleMethods:
     def test_get_rides(self, authenticated_client):
         bikes = authenticated_client.get_bikes()
         bike_id = bikes[0]["id"]
-        ride_iterable = authenticated_client.get_rides(bike_id, batch_size=6)
+        ride_iterable = authenticated_client.iterate_rides(bike_id, batch_size=6)
         rides = list(islice(ride_iterable, 10))
         assert len(rides) == 10
 
     def test_get_location(self, authenticated_client):
         bikes = authenticated_client.get_bikes()
         bike_id = bikes[0]["id"]
-        for ride in authenticated_client.get_rides(bike_id, batch_size=2):
+        for ride in authenticated_client.iterate_rides(bike_id, batch_size=2):
             locations = authenticated_client.get_location(
                 bike_id=bike_id, start_date=ride["start_date"], end_date=ride["end_date"]
             )
