@@ -3,7 +3,8 @@ from itertools import islice
 from os import environ
 from zoneinfo import ZoneInfo
 
-from pytest import mark, raises
+from pytest import fixture, mark, raises, skip
+from requests import HTTPError
 
 from pylovens import LovensClient
 
@@ -46,6 +47,43 @@ class TestLogin:
     def test_get_aws_cognito_token(self, client: LovensClient):
         token = client._get_aws_cognito_token(username=environ["LOVENS_USERNAME"], password=environ["LOVENS_PASSWORD"])
         assert len(token) > 0
+
+
+class TestNormalizeDates:
+    @fixture(scope="function")
+    def client_with_timezone(self) -> LovensClient:
+        client = LovensClient()
+        client._timezone = "Europe/Amsterdam"
+        return client
+
+    @mark.parametrize(
+        "start_date,end_date",
+        [
+            (None, None),
+            (None, datetime(2023, 1, 1, tzinfo=ZoneInfo("Europe/Amsterdam"))),
+            (datetime(2023, 1, 1, tzinfo=ZoneInfo("Europe/Amsterdam")), None),
+            (
+                datetime(2023, 1, 1, tzinfo=ZoneInfo("Europe/Amsterdam")),
+                datetime(2023, 1, 2, tzinfo=ZoneInfo("Europe/Amsterdam")),
+            ),
+        ],
+    )
+    def test_passthrough(self, client_with_timezone: LovensClient, start_date, end_date):
+        x, y = client_with_timezone._normalise_dates(start_date, end_date)
+        assert x == start_date
+        assert y == end_date
+
+    def test_date_to_datetime(self, client_with_timezone: LovensClient):
+        x, y = client_with_timezone._normalise_dates(date(2023, 1, 15), date(2023, 1, 30))
+        assert x == datetime(2023, 1, 15, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert y == datetime(2023, 1, 30, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+
+    def test_tz_unaware(self, client_with_timezone: LovensClient):
+        x, y = client_with_timezone._normalise_dates(
+            datetime(2023, 1, 15), datetime(2023, 1, 30, tzinfo=ZoneInfo("Asia/Singapore"))
+        )
+        assert x == datetime(2023, 1, 15, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert y == datetime(2023, 1, 30, tzinfo=ZoneInfo("Asia/Singapore"))
 
 
 @if_authenticated
