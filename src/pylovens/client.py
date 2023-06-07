@@ -194,6 +194,30 @@ class LovensClient:
         if data["meta"]["total_records"] > data["meta"]["offset"] + data["meta"]["limit"]:
             yield from self.iterate_rides(bike_id=bike_id, batch_size=batch_size, _offset=_offset + batch_size)
 
+    def get_state(self, bike_id: int) -> dict[str]:
+        """
+        Get the state of a bike.
+
+        Args:
+            bike_id: The ID of the bike.
+
+        Returns:
+            A dictionary of the following form:
+              {
+                'powered_on': False,
+                'ecu_locked': False,
+                'erl_locked': False,
+                'battery_percentage': 50,
+                'charging': False,
+                'last_full_charge': datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                'odometer': 300,
+                'range': 30
+              }
+        """
+        response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/state", headers=self._headers_with_auth)
+        response.raise_for_status()
+        return self._parse_dates(response.json(), keys={"last_full_charge"})
+
     def get_statistics(
         self,
         bike_id: int,

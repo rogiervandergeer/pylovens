@@ -104,6 +104,11 @@ class TestSimpleMethods:
         bikes = authenticated_client.get_bikes()
         assert len(bikes) > 0
 
+    def test_get_state(self, authenticated_client: LovensClient, bike_id: int):
+        state = authenticated_client.get_state(bike_id)
+        assert "powered_on" in state
+        assert isinstance(state["last_full_charge"], datetime)
+
     def test_get_location(self, authenticated_client):
         bikes = authenticated_client.get_bikes()
         bike_id = bikes[0]["id"]
