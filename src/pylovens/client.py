@@ -216,7 +216,7 @@ class LovensClient:
         """
         response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/state", headers=self._headers_with_auth)
         response.raise_for_status()
-        return self._parse_dates(response.json(), keys={"last_full_charge"})
+        return self._parse_dates(response.json()[0], keys={"last_full_charge"})
 
     def get_statistics(
         self,
