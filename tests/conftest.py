@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import environ
 
 from pytest import fixture, mark
@@ -21,3 +22,9 @@ def authenticated_client() -> LovensClient:
 def bike_id(authenticated_client: LovensClient) -> int:
     bikes = authenticated_client.get_bikes()
     return bikes[0]["id"]
+
+
+@fixture(scope="session")
+def ride(authenticated_client: LovensClient, bike_id: int) -> dict:
+    for ride in authenticated_client.iterate_rides(bike_id):
+        return ride

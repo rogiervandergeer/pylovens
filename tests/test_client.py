@@ -126,6 +126,15 @@ class TestRides:
         rides = authenticated_client.get_rides(bike_id, n=2, newest_first=newest_first)
         assert (rides[0]["creation_date"] > rides[1]["creation_date"]) == newest_first
 
+    def test_get_location(self, authenticated_client: LovensClient, ride: dict):
+        locations = authenticated_client.get_location(
+            bike_id=ride["bike_id"], start_date=ride["start_date"], end_date=ride["end_date"]
+        )
+        for location in locations:
+            assert isinstance(location["date"], datetime)
+            assert location["date"] >= locations[0]["date"]
+        assert not locations[-1]["is_moving"]  # The ride always ends when stopped.
+
 
 @if_authenticated
 class TestSimpleMethods:
@@ -146,16 +155,6 @@ class TestSimpleMethods:
         state = authenticated_client.get_state(bike_id)
         assert "powered_on" in state
         assert isinstance(state["last_full_charge"], datetime)
-
-    def test_get_location(self, authenticated_client):
-        bikes = authenticated_client.get_bikes()
-        bike_id = bikes[0]["id"]
-        for ride in authenticated_client.iterate_rides(bike_id, batch_size=2):
-            locations = authenticated_client.get_location(
-                bike_id=bike_id, start_date=ride["start_date"], end_date=ride["end_date"]
-            )
-            assert len(locations) > 0
-            break
 
 
 @if_authenticated

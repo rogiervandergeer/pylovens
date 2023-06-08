@@ -194,14 +194,43 @@ class LovensClient:
         response.raise_for_status()
         return response.json()
 
-    def get_location(self, bike_id: int, start_date: datetime | str, end_date: datetime | str):
+    def get_location(
+        self, bike_id: int, start_date: datetime | date, end_date: datetime | date
+    ) -> list[dict, bool, datetime | int | float]:
+        """
+        Get location history in a time range.
+
+        If start_date and/or end_date is a date object, they are interpreted as the start and end of the day
+        respectively. Timezone-naive datetime objects are converted to the user's timezone (see get_user).
+
+        Args:
+            bike_id: The ID of the bike.
+            start_date: Start date of a timespan.
+            end_date: End date of a timespan.
+
+        Returns:
+            A list of dictionaries of the following form:
+            {
+                "id": "123456b123",
+                'lat': 52.379189,
+                'lon': 4.899431,
+                "date": datetime(2023, 4, 1, 17, 1, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "speed": 21,
+                "battery_percentage": 0,  # Always 0 - never filled
+                "bike_id": 123,
+                "is_moving": True
+            }
+        """
+        start_date, end_date = self._normalise_dates(start_date, end_date)
+
         response = get(
             f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/location?"
-            f"from={quote(start_date)}&till={quote(end_date)}",
+            f"from={quote(start_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}&"
+            f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}",
             headers=self._headers_with_auth,
         )
         response.raise_for_status()
-        return response.json()
+        return list(sorted(map(self._parse_dates, response.json()), key=lambda d: d["date"]))
 
     def get_rides(self, bike_id: int, newest_first: bool = True, n: int = 50) -> list[dict]:
         """
