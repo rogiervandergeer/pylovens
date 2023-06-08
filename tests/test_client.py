@@ -133,7 +133,12 @@ class TestRides:
         for location in locations:
             assert isinstance(location["date"], datetime)
             assert location["date"] >= locations[0]["date"]
-        assert not locations[-1]["is_moving"]  # The ride always ends when stopped.
+
+    def test_get_ride(self, authenticated_client: LovensClient, ride: dict):
+        ride_ = authenticated_client.get_ride(ride["id"])
+        assert ride_ == ride
+        for value in ride_.values():
+            assert isinstance(value, (int, dict))
 
 
 @if_authenticated

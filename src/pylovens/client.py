@@ -232,9 +232,39 @@ class LovensClient:
         response.raise_for_status()
         return list(sorted(map(self._parse_dates, response.json()), key=lambda d: d["date"]))
 
+    def get_ride(self, ride_id: int) -> dict:
+        """
+        Fetch a ride by its ID.
+
+        Args:
+            ride_id: The ID of the ride.
+
+        Returns:
+            A dictionary describing the ride.
+            It contains, among others, the following keys:
+            {
+                "id": 123456,
+                "start_date": datetime(2023, 4, 1, 17, 1, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "end_date": datetime(2023, 4, 1, 17, 6, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "calories": 14,
+                "avg_speed": 21,
+                "distance_traveled": 1234,
+                "bike_id": 123,
+                "user_id": 1234,
+                "user": { <same as output of get_user()> },
+                "creation_date": datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                "active_time": 330,
+                "timezone": "Europe/Amsterdam",
+                ...
+            }
+        """
+        response = get(f"https://lovens.api.bike.conneq.tech/v2/bike/ride/{ride_id}", headers=self._headers_with_auth)
+        response.raise_for_status()
+        return self._parse_dates(response.json())
+
     def get_rides(self, bike_id: int, newest_first: bool = True, n: int = 50) -> list[dict]:
         """
-        Fetch a lift of rides of a bike.
+        Fetch a list of rides of a bike.
 
         If you are interested in fetching all rides of a bike, or are not sure how many you need,
         consider using iterate_rides.
