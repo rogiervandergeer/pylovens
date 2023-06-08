@@ -270,19 +270,16 @@ class LovensClient:
         response.raise_for_status()
         return list(map(partial(self._parse_dates, keys={"from", "till"}), response.json()))
 
-    def get_user(self, _parse_dates: bool = True) -> dict:
+    def get_user(self) -> dict:
         """
         Get information on the user.
-
-        Args:
-            _parse_dates: If False, skip parsing dates. For internal use.
 
         Returns:
             An extensive dictionary with details on the user, including the following keys and many more:
             {
                 "id": 1234,
                 "name": "Your Name",
-                "creation_date": "2023-01-01T00:00:00+0200",
+                "creation_date": datetime(2023, 4, 30, 23, 59, 59, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
                 "email": "your@mail.address",
                 "timezone": "Europe/Amsterdam",
                 ...
@@ -290,7 +287,9 @@ class LovensClient:
         """
         response = get(f"https://lovens.api.bike.conneq.tech/user/me", headers=self._headers_with_auth)
         response.raise_for_status()
-        return self._parse_dates(response.json()) if _parse_dates else response.json()
+        data = response.json()
+        self._timezone = data["timezone"]
+        return self._parse_dates(data)
 
     def login(self, username: str, password: str) -> None:
         """
@@ -308,7 +307,7 @@ class LovensClient:
     @property
     def timezone(self) -> ZoneInfo:
         if self._timezone is None:
-            self._timezone = self.get_user(_parse_dates=False)["timezone"]
+            self.get_user()
         return ZoneInfo(self._timezone)
 
     @staticmethod
