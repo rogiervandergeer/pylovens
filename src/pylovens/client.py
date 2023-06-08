@@ -69,7 +69,7 @@ class LovensClient:
             end_date: Optional end date or datetime (inclusive).
 
         Returns:
-            A list of dictionaries of the following form:
+            A list of dictionaries of the following form, in 15-minute intervals:
               {
                 'date': datetime(2023, 4, 30, 0, 0, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
                 'battery_percentage': 69,
@@ -451,6 +451,7 @@ class LovensClient:
 
     @property
     def timezone(self) -> ZoneInfo:
+        """The timezone of your user."""
         if self._timezone is None:
             self.get_user()
         return ZoneInfo(self._timezone)
