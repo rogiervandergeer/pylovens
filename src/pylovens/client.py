@@ -108,6 +108,92 @@ class LovensClient:
         response.raise_for_status()
         return response.json()
 
+    def get_geofences(self, bike_id: int) -> list[dict[str, datetime | dict[str, float] | int | str]]:
+        """
+        Fetch all geofences associated to a bike.
+
+        Args:
+            bike_id: The ID of the bike.
+
+        Returns:
+            A list of dictionaries of the following form:
+              {
+                'id': 456,
+                'bike_id': 123,
+                'user_id': 1234,
+                'name': 'Amsterdam City Center',
+                'center': {'lat': 52.379189, 'lon': 4.899431},
+                'radius': 200,
+                'active_state': 0,
+                'creation_date': datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam'))
+              }
+        """
+        response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/geofence", headers=self._headers_with_auth)
+        response.raise_for_status()
+        return [self._parse_dates(geofence) for geofence in response.json()]
+
+    def get_geofence(self, geofence_id: int) -> dict[str, datetime | dict[str, float] | int | str]:
+        """
+        Get a single geofence by its ID.
+
+        Args:
+            geofence_id: The ID of the geofence.
+
+        Returns:
+            A dictionary of the following form:
+              {
+                'id': 456,
+                'bike_id': 123,
+                'user_id': 1234,
+                'name': 'Amsterdam City Center',
+                'center': {'lat': 52.379189, 'lon': 4.899431},
+                'radius': 200,
+                'active_state': 0,
+                'creation_date': datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam'))
+              }
+        """
+        response = get(
+            f"https://lovens.api.bike.conneq.tech/bike/geofence/{geofence_id}", headers=self._headers_with_auth
+        )
+        response.raise_for_status()
+        return self._parse_dates(response.json())
+
+    def get_geofence_stats(
+        self,
+        geofence_id: int,
+        start_date: datetime | date | None = None,
+        end_date: datetime | date | None = None,
+    ) -> dict[str, int]:
+        """
+        Get statistics of a geofence.
+
+        Args:
+            geofence_id: The ID of the geofence.
+            start_date: Start date of a timespan. Optional, must be provided if end_date is provided.
+            end_date: End date of a timespan. Optional, must be provided if start_date is provided.
+
+        Returns:
+            A dictionary of the following form:
+              {
+                'entries_all_time': 1,
+                'entries_in_timespan': 0  # Only if start_date and end_date provided.
+              }
+        """
+        if (start_date is None) != (end_date is None):
+            raise ValueError("Either start_date and end_date must both be None, or both be provided.")
+        start_date, end_date = self._normalise_dates(start_date, end_date)
+
+        url = f"https://lovens.api.bike.conneq.tech/bike/geofence/{geofence_id}/stats"
+        if start_date is not None:
+            url += (
+                f"?from={quote(start_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}&"
+                f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}"
+            )
+
+        response = get(url, headers=self._headers_with_auth)
+        response.raise_for_status()
+        return response.json()
+
     def get_location(self, bike_id: int, start_date: datetime | str, end_date: datetime | str):
         response = get(
             f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/location?"

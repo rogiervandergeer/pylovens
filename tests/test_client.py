@@ -159,6 +159,34 @@ class TestSimpleMethods:
 
 
 @if_authenticated
+class TestGeofences:
+    @fixture(scope="class")
+    def geofence(self, authenticated_client: LovensClient, bike_id: int) -> dict:
+        geofence_data = authenticated_client.get_geofences(bike_id)
+        if len(geofence_data) == 0:
+            skip("No geofences defined.")
+        return geofence_data[0]
+
+    def test_get_geofences(self, authenticated_client: LovensClient, geofence: dict):
+        assert isinstance(geofence["creation_date"], datetime)
+
+    def test_get_geofence_by_id(self, authenticated_client: LovensClient, geofence: dict):
+        geofence_by_id = authenticated_client.get_geofence(geofence["id"])
+        assert geofence_by_id == geofence
+
+    def test_get_all_time_geofence_stats(self, authenticated_client: LovensClient, geofence: dict):
+        geofence_stats = authenticated_client.get_geofence_stats(geofence["id"])
+        assert len(geofence_stats) == 1
+        assert "entries_all_time" in geofence_stats
+
+    def test_get_geofence_stats(self, authenticated_client: LovensClient, geofence: dict):
+        geofence_stats = authenticated_client.get_geofence_stats(
+            geofence["id"], geofence["creation_date"], geofence["creation_date"] + timedelta(days=7)
+        )
+        assert geofence_stats.keys() == {"entries_all_time", "entries_in_timespan"}
+
+
+@if_authenticated
 class TestStatistics:
     def test_get_daily_statistics(self, authenticated_client: LovensClient, bike_id: int):
         stats = authenticated_client.get_statistics(bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5))
