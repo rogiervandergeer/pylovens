@@ -103,10 +103,54 @@ class LovensClient:
         response.raise_for_status()
         return list(map(self._parse_dates, response.json()))
 
+    def get_bike(self, bike_id: int) -> dict:
+        """
+        Fetch a bike by its ID.
+
+        Args:
+            bike_id: The ID of the bike.
+
+        Returns:
+            A dictionaries of the following form:
+              {
+                'id': 456,
+                'user_id': 1234,
+                'user_name': 'Your Name',
+                'active_state': 0,
+                'name': 'Your Bikes Name',
+                'last_location': { <most recent available result of the get_location method> },
+                'battery_percentage': 50,
+                'owning_user': { <result of get_user method> },
+                'geofences': [ <result of get_geofences method> ],
+                ...
+              }
+        """
+        response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}", headers=self._headers_with_auth)
+        response.raise_for_status()
+        return self._parse_dates(response.json())
+
     def get_bikes(self) -> list[dict]:
+        """
+        Fetch all bikes accessible to your user.
+
+        Returns:
+            A list of dictionaries of the following form:
+              {
+                'id': 456,
+                'user_id': 1234,
+                'user_name': 'Your Name',
+                'active_state': 0,
+                'name': 'Your Bikes Name',
+                'last_location': { <most recent available result of the get_location method> },
+                'battery_percentage': 50,
+                'owning_user': { <result of get_user method> },
+                'geofences': [ <result of get_geofences method> ],
+                ...
+              }
+        """
         response = get("https://lovens.api.bike.conneq.tech/bike", headers=self._headers_with_auth)
         response.raise_for_status()
-        return response.json()
+        return list(map(self._parse_dates, response.json()))
 
     def get_geofences(self, bike_id: int) -> list[dict[str, datetime | dict[str, float] | int | str]]:
         """

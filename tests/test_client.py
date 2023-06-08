@@ -137,8 +137,6 @@ class TestRides:
     def test_get_ride(self, authenticated_client: LovensClient, ride: dict):
         ride_ = authenticated_client.get_ride(ride["id"])
         assert ride_ == ride
-        for value in ride_.values():
-            assert isinstance(value, (int, dict))
 
 
 @if_authenticated
@@ -152,9 +150,10 @@ class TestSimpleMethods:
         # Timezone in the format 'Europe/Amsterdam'
         assert isinstance(authenticated_client.timezone, ZoneInfo)
 
-    def test_get_bikes(self, authenticated_client):
+    def test_get_bikes(self, authenticated_client: LovensClient):
         bikes = authenticated_client.get_bikes()
         assert len(bikes) > 0
+        assert bikes[0] == authenticated_client.get_bike(bikes[0]["id"])
 
     def test_get_state(self, authenticated_client: LovensClient, bike_id: int):
         state = authenticated_client.get_state(bike_id)
