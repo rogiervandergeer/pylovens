@@ -319,7 +319,7 @@ class LovensClient:
             n: Number of rides to fetch. Defaults to 50.
 
         Returns:
-            An iterables of dictionaries describing the rides.
+            An list of dictionaries describing the rides.
             Each dictionary contains, among others, the following keys:
             {
                 "id": 123456,
