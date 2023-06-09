@@ -636,13 +636,13 @@ class LovensClient:
         elif not isinstance(start_date, datetime):  # start_date is a date
             start_date = datetime.combine(start_date, time(0, 0, tzinfo=self.timezone))
         elif start_date.tzinfo is None:
-            start_date = start_date.astimezone(self.timezone)
+            start_date = start_date.replace(tzinfo=self.timezone)
 
         if end_date is None:
             pass
         elif not isinstance(end_date, datetime):
             end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=self.timezone))
         elif end_date.tzinfo is None:
-            end_date = end_date.astimezone(self.timezone)
+            end_date = end_date.replace(tzinfo=self.timezone)
 
         return start_date, end_date
