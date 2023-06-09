@@ -352,7 +352,7 @@ class LovensClient:
             _offset: Used in pagination.
 
         Returns:
-            An iterables of dictionaries describing the rides.
+            An iterable of dictionaries describing the rides.
             Each dictionary contains, among others, the following keys:
             {
                 "id": 123456,
