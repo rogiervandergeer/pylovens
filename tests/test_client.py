@@ -79,11 +79,10 @@ class TestNormalizeDates:
         assert y == datetime(2023, 1, 30, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
 
     def test_tz_unaware(self, client_with_timezone: LovensClient):
-        x, y = client_with_timezone._normalise_dates(
-            datetime(2023, 1, 15), datetime(2023, 1, 30, tzinfo=ZoneInfo("Asia/Singapore"))
-        )
-        assert x == datetime(2023, 1, 15, tzinfo=ZoneInfo("Europe/Amsterdam"))
-        assert y == datetime(2023, 1, 30, tzinfo=ZoneInfo("Asia/Singapore"))
+        a, b = datetime(2023, 1, 15), datetime(2023, 1, 30, tzinfo=ZoneInfo("Asia/Singapore"))
+        x, y = client_with_timezone._normalise_dates(a, b)
+        assert x == a.astimezone(ZoneInfo("Europe/Amsterdam"))
+        assert y == b
 
 
 @if_authenticated

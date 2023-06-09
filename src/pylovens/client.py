@@ -36,8 +36,8 @@ class LovensClient:
               {
                 'current': -450,
                 'battery_percentage': 69,
-                'last_battery_update': '2023-04-30T09:01:48+0000',
-                'last_full_charge': '2023-04-29T19:03:22+0000'
+                'last_battery_update': datetime(2023, 4, 30, 0, 0, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
+                'last_full_charge': datetime(2023, 4, 30, 0, 0, 0, tzinfo=ZoneInfo(key='Europe/Amsterdam'),
                 'charging': False,
                 'range': 30
               }
