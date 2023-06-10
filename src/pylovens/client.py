@@ -78,7 +78,7 @@ class LovensClient:
                 'seconds_charging': 0,
               }
 
-            Note that 'battery_percentage' is None when the battery is removed.
+            Note that 'battery_percentage' is None when the bike is turned off.
         """
         if start_date is not None:
             if not isinstance(start_date, datetime):
