@@ -26,7 +26,29 @@ _Note:_ only authentication with email/password is supported.
 
 ## Methods
 
-The `LovensClient` exposes these methods:
+The `LovensClient` exposes the following methods:
+
+ - [Login & User](#login--user)
+   - [`login`](#login---log-in-using-your-username-e-mail-address-and-password)
+   - [`get_user`](#getuser---get-information-on-the-user)
+ - [Bikes](#bikes)
+   - [`get_bikes`](#getbikes---fetch-all-bikes-accessible-to-your-user)
+   - [`get_bike`](#getbike---fetch-a-bike-by-its-id)
+   - [`get_state`](#getstate---get-the-state-of-a-bike)
+ - [Rides](#rides)
+   - [`iterate_rides`](#iteraterides---iterate-through-the-rides-of-a-bike)
+   - [`get_rides`](#getrides---fetch-a-list-of-rides-of-a-bike)
+   - [`get_ride`](#getride---fetch-a-ride-by-its-id)
+   - [`get_location`](#getlocation---get-location-history-in-a-time-range)
+ - [Battery](#battery)
+   - [`get_battery_state`](#getbatterystate---get-the-state-of-the-battery-of-a-bike)
+   - [`get_battery_statistics`](#getbatterystatistics---get-historical-state-of-the-battery-of-a-bike)
+ - [Statistics](#statistics)
+   - [`get_statistics`](#getstatistics---get-ride-statistics-for-a-bike)
+ - [Geofences](#geofences)
+   - [`get_geofences`](#getgeofences---fetch-all-geofences-associated-to-a-bike)
+   - [`get_geofence`](#getgeofence---get-a-single-geofence-by-its-id)
+   - [`get_geofence_stats`](#getgeofencestats---get-statistics-of-a-geofence)
 
 ### Login & User
 
