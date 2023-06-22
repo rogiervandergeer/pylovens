@@ -140,7 +140,7 @@ class TestRides:
 
 
 @if_authenticated
-class TestSimpleMethods:
+class TestMisc:
     def test_user(self, authenticated_client: LovensClient):
         user = authenticated_client.get_user()
         assert "timezone" in user
@@ -159,6 +159,13 @@ class TestSimpleMethods:
         state = authenticated_client.get_state(bike_id)
         assert "powered_on" in state
         assert isinstance(state["last_full_charge"], datetime)
+
+    def test_get_health(self, authenticated_client: LovensClient, bike_id: int):
+        health = authenticated_client.get_health(bike_id)
+        assert isinstance(health[0]["value"], datetime)
+        assert isinstance(health[1]["value"], datetime)
+        assert isinstance(health[2]["value"], str)
+        assert isinstance(health[3]["value"], str)
 
 
 @if_authenticated

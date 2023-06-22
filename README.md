@@ -35,6 +35,7 @@ The `LovensClient` exposes the following methods:
    - [`get_bikes`](#getbikes---fetch-all-bikes-accessible-to-your-user)
    - [`get_bike`](#getbike---fetch-a-bike-by-its-id)
    - [`get_state`](#getstate---get-the-state-of-a-bike)
+   - [`get_health`](#gethealth---get-bike-health-status)
  - [Rides](#rides)
    - [`iterate_rides`](#iteraterides---iterate-through-the-rides-of-a-bike)
    - [`get_rides`](#getrides---fetch-a-list-of-rides-of-a-bike)
@@ -152,6 +153,44 @@ A dictionary of the following form:
 }
 ```
 
+#### `get_health` - Get bike health status.
+```python
+def get_health(self, bike_id: int) -> list[dict]
+```
+
+##### Arguments
+- `bike_id`: The ID of the bike.
+
+##### Returns
+A list of four dictionaries:
+```python
+[
+  {
+    'key': 'last_connection',
+    'status': True,
+    'value': datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+    'value_type': 'datetime'
+  },
+  {
+    'key': 'last_gps',
+    'status': False,
+    'value': datetime(2023, 3, 31, 16, 51, 22, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+    'value_type': 'datetime'
+  },
+  {
+    'key': 'gps_battery',
+    'status': True,
+    'value': '75%',
+    'value_type': 'string'
+  },
+  {
+    'key': 'bike_system',
+    'status': True,
+    'value': 'true',
+    'value_type': 'bool'
+  }
+]
+```
 
 ### Rides
 

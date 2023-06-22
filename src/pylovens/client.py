@@ -238,6 +238,46 @@ class LovensClient:
         response.raise_for_status()
         return response.json()
 
+    def get_health(self, bike_id: int) -> list[dict]:
+        """
+        Get bike health status.
+
+        Args:
+            bike_id: The ID of the bike.
+
+        Returns:
+            A list of four dictionaries:
+            [
+              {
+                'key': 'last_connection',
+                'status': True,
+                'value': datetime(2023, 4, 1, 17, 10, 30, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                'value_type': 'datetime'
+              },
+              {
+                'key': 'last_gps',
+                'status': False,
+                'value': datetime(2023, 3, 31, 16, 51, 22, tzinfo=ZoneInfo(key='Europe/Amsterdam')),
+                'value_type': 'datetime'
+              },
+              {
+                'key': 'gps_battery',
+                'status': True,
+                'value': '75%',
+                'value_type': 'string'
+              },
+              {
+                'key': 'bike_system',
+                'status': True,
+                'value': 'true',
+                'value_type': 'bool'
+              }
+            ]
+        """
+        response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/health", headers=self._headers_with_auth)
+        response.raise_for_status()
+        return [self._parse_dates(d, keys={"value"}) if d["value_type"] == "datetime" else d for d in response.json()]
+
     def get_location(
         self, bike_id: int, start_date: datetime | date, end_date: datetime | date
     ) -> list[dict, bool, datetime | int | float]:
