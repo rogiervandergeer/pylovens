@@ -293,6 +293,7 @@ def get_battery_state(self, bike_id: int) -> dict[str]
 
 ##### Returns
 A dictionary of the following form:
+```python
 {
   'current': -450,
   'battery_percentage': 69,
@@ -301,6 +302,7 @@ A dictionary of the following form:
   'charging': False,
   'range': 30
 }
+```
 
 #### `get_battery_statistics` - Get historical state of the battery of a bike.
 ```python
