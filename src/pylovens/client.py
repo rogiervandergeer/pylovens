@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from requests import get, post
 
 from pylovens._version import __version__
+from pylovens.exceptions import AuthenticationError
 
 
 class LovensClient:
@@ -589,6 +590,8 @@ class LovensClient:
                 **self._headers,
             },
         )
+        if response.status_code == 400:
+            raise AuthenticationError()
         response.raise_for_status()
         return response.json()["AuthenticationResult"]["AccessToken"]
 

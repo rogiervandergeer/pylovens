@@ -7,11 +7,7 @@ from pytest import fixture, mark, raises, skip
 from requests import HTTPError
 
 from pylovens import LovensClient
-
-
-if_authenticated = mark.skipif(
-    "LOVENS_USERNAME" not in environ or "LOVENS_PASSWORD" not in environ, reason="Requires authentication."
-)
+from pylovens.exceptions import AuthenticationError
 
 
 class TestHeaders:
@@ -43,10 +39,18 @@ class TestLogin:
         client_id = client._get_aws_cognito_client_id()
         assert len(client_id) > 0
 
-    @if_authenticated
     def test_get_aws_cognito_token(self, client: LovensClient):
-        token = client._get_aws_cognito_token(username=environ["LOVENS_USERNAME"], password=environ["LOVENS_PASSWORD"])
+        try:
+            token = client._get_aws_cognito_token(
+                username=environ["LOVENS_USERNAME"], password=environ["LOVENS_PASSWORD"]
+            )
+        except KeyError:
+            skip("Requires authentication.")
         assert len(token) > 0
+
+    def test_invalid_credentials(self, client: LovensClient):
+        with raises(AuthenticationError):
+            client._get_aws_cognito_token(username="test", password="user")
 
 
 class TestNormalizeDates:
@@ -86,7 +90,6 @@ class TestNormalizeDates:
         assert y == datetime(2023, 1, 30, tzinfo=ZoneInfo("Asia/Singapore"))
 
 
-@if_authenticated
 class TestBattery:
     def test_get_battery_state(self, authenticated_client: LovensClient, bike_id: int):
         state = authenticated_client.get_battery_state(bike_id)
@@ -108,7 +111,6 @@ class TestBattery:
             )
 
 
-@if_authenticated
 class TestRides:
     def test_iterate_rides(self, authenticated_client: LovensClient, bike_id: int):
         rides = authenticated_client.iterate_rides(bike_id)
@@ -139,7 +141,6 @@ class TestRides:
         assert ride_ == ride
 
 
-@if_authenticated
 class TestMisc:
     def test_user(self, authenticated_client: LovensClient):
         user = authenticated_client.get_user()
@@ -168,7 +169,6 @@ class TestMisc:
         assert isinstance(health[3]["value"], str)
 
 
-@if_authenticated
 class TestGeofences:
     @fixture(scope="class")
     def geofence(self, authenticated_client: LovensClient, bike_id: int) -> dict:
@@ -196,7 +196,6 @@ class TestGeofences:
         assert geofence_stats.keys() == {"entries_all_time", "entries_in_timespan"}
 
 
-@if_authenticated
 class TestStatistics:
     def test_get_daily_statistics(self, authenticated_client: LovensClient, bike_id: int):
         stats = authenticated_client.get_statistics(bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5))
