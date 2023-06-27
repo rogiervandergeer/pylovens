@@ -10,8 +10,19 @@ description = "Python client for the Lovens API."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
+keywords = [
+    "api",
+    "cargo bike",
+    "ebike",
+    "gps",
+    "lovens",
+]
 classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Typing :: Typed"
 ]
 dependencies = [
     "requests>=2.31.0",
@@ -20,6 +31,9 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = ["black==23.3.0", "pytest>=7.3.1"]
+
+[project.urls]
+Repository = "https://github.com/rogiervandergeer/pylovens"
 
 [tool.setuptools_scm]
 write_to = "src/pylovens/_version.py"
