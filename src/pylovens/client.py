@@ -10,10 +10,10 @@ from typing import Iterable
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from requests import get, post
+from requests import Response, get, post
 
 from pylovens._version import __version__
-from pylovens.exceptions import AuthenticationError
+from pylovens.exceptions import AuthenticationError, InvalidTokenError, NoAccessToken
 
 
 class LovensClient:
@@ -46,7 +46,7 @@ class LovensClient:
         response = get(
             f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/battery/current-state", headers=self._headers_with_auth
         )
-        response.raise_for_status()
+        self._handle_errors(response)
         return self._parse_dates(response.json(), keys={"last_battery_update", "last_full_charge"})
 
     def get_battery_statistics(
@@ -101,7 +101,7 @@ class LovensClient:
             url += f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}"
 
         response = get(url, headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return list(map(self._parse_dates, response.json()))
 
     def get_bike(self, bike_id: int) -> dict:
@@ -127,7 +127,7 @@ class LovensClient:
               }
         """
         response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}", headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return self._parse_dates(response.json())
 
     def get_bikes(self) -> list[dict]:
@@ -150,7 +150,7 @@ class LovensClient:
               }
         """
         response = get("https://lovens.api.bike.conneq.tech/bike", headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return list(map(self._parse_dates, response.json()))
 
     def get_geofences(self, bike_id: int) -> list[dict[str, datetime | dict[str, float] | int | str]]:
@@ -174,7 +174,7 @@ class LovensClient:
               }
         """
         response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/geofence", headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return [self._parse_dates(geofence) for geofence in response.json()]
 
     def get_geofence(self, geofence_id: int) -> dict[str, datetime | dict[str, float] | int | str]:
@@ -200,7 +200,7 @@ class LovensClient:
         response = get(
             f"https://lovens.api.bike.conneq.tech/bike/geofence/{geofence_id}", headers=self._headers_with_auth
         )
-        response.raise_for_status()
+        self._handle_errors(response)
         return self._parse_dates(response.json())
 
     def get_geofence_stats(
@@ -236,7 +236,7 @@ class LovensClient:
             )
 
         response = get(url, headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return response.json()
 
     def get_health(self, bike_id: int) -> list[dict]:
@@ -276,7 +276,7 @@ class LovensClient:
             ]
         """
         response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/health", headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return [self._parse_dates(d, keys={"value"}) if d["value_type"] == "datetime" else d for d in response.json()]
 
     def get_location(
@@ -314,7 +314,7 @@ class LovensClient:
             f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}",
             headers=self._headers_with_auth,
         )
-        response.raise_for_status()
+        self._handle_errors(response)
         return list(sorted(map(self._parse_dates, response.json()), key=lambda d: d["date"]))
 
     def get_ride(self, ride_id: int) -> dict:
@@ -344,7 +344,7 @@ class LovensClient:
             }
         """
         response = get(f"https://lovens.api.bike.conneq.tech/v2/bike/ride/{ride_id}", headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return self._parse_dates(response.json())
 
     def get_rides(self, bike_id: int, newest_first: bool = True, n: int = 50) -> list[dict]:
@@ -418,7 +418,7 @@ class LovensClient:
             f"order%5B%5D=start_date%3B{'desc' if newest_first else 'asc'}",
             headers=self._headers_with_auth,
         )
-        response.raise_for_status()
+        self._handle_errors(response)
         data = response.json()
         yield from map(self._parse_dates, data["data"])
         if data["meta"]["total_records"] > data["meta"]["offset"] + data["meta"]["limit"]:
@@ -445,7 +445,7 @@ class LovensClient:
               }
         """
         response = get(f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/state", headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         return self._parse_dates(response.json()[0], keys={"last_full_charge"})
 
     def get_statistics(
@@ -497,7 +497,7 @@ class LovensClient:
             f"type={type}&tz={self.timezone.key}",
             headers=self._headers_with_auth,
         )
-        response.raise_for_status()
+        self._handle_errors(response)
         return list(map(partial(self._parse_dates, keys={"from", "till"}), response.json()))
 
     def get_user(self) -> dict:
@@ -516,7 +516,7 @@ class LovensClient:
             }
         """
         response = get(f"https://lovens.api.bike.conneq.tech/user/me", headers=self._headers_with_auth)
-        response.raise_for_status()
+        self._handle_errors(response)
         data = response.json()
         self._timezone = data["timezone"]
         return self._parse_dates(data)
@@ -557,7 +557,7 @@ class LovensClient:
             response = get(
                 f"https://api.ids.conneq.tech/client/{self.client_id}/setting/loginpage", headers=self._headers
             )
-            response.raise_for_status()
+            self._handle_errors(response)
             self._login_settings_ = response.json()
         return self._login_settings_
 
@@ -567,7 +567,7 @@ class LovensClient:
             f"https://api.ids.conneq.tech/client/{self._login_settings['idp_client_id']}/setting/signinpage",
             headers=self._headers,
         )
-        response.raise_for_status()
+        self._handle_errors(response)
         return response.json()["cognito_config"]["aws_user_pools_web_client_id"]
 
     def _get_aws_cognito_token(self, username: str, password: str) -> str:
@@ -592,7 +592,7 @@ class LovensClient:
         )
         if response.status_code == 400:
             raise AuthenticationError()
-        response.raise_for_status()
+        self._handle_errors(response)
         return response.json()["AuthenticationResult"]["AccessToken"]
 
     def _get_access_token(self, code: str, verifier: str) -> str:
@@ -608,7 +608,7 @@ class LovensClient:
                 **self._headers,
             },
         )
-        response.raise_for_status()
+        self._handle_errors(response)
         return response.json()["access_token"]
 
     def _send_code_challenge(self, code_challenge: str, cognito_token: str) -> str:
@@ -644,7 +644,7 @@ class LovensClient:
     def _headers_with_auth(self) -> dict[str, str]:
         """The headers including authorization. Only possible when authenticated."""
         if self.access_token is None:
-            raise ValueError("Not authenticated.")
+            raise NoAccessToken(f"{self.__class__.__name__} has no access token.")
         return {"Authorization": f"Bearer {self.access_token}", **self._headers}
 
     def _parse_dates(self, data: dict[str], keys: set[str] | None = None) -> dict[str]:
@@ -655,6 +655,13 @@ class LovensClient:
             else value
             for key, value in data.items()
         }
+
+    def _handle_errors(self, response: Response) -> None:
+        """Check for error codes."""
+        if response.status_code in (401, 403):  # 401 is returned for invalid tokens, 403 for malformed tokens
+            self.access_token = None
+            raise InvalidTokenError()
+        response.raise_for_status()
 
     def _normalise_dates(
         self, start_date: datetime | date | None, end_date: datetime | date | None

@@ -7,7 +7,7 @@ from pytest import fixture, mark, raises, skip
 from requests import HTTPError
 
 from pylovens import LovensClient
-from pylovens.exceptions import AuthenticationError
+from pylovens.exceptions import AuthenticationError, InvalidTokenError, NoAccessToken
 
 
 class TestHeaders:
@@ -18,7 +18,7 @@ class TestHeaders:
         assert "+" not in headers["User-Agent"]
 
     def test_headers_with_auth_without_token(self, client: LovensClient):
-        with raises(ValueError):
+        with raises(NoAccessToken):
             _ = client._headers_with_auth
 
     def test_headers_with_auth(self, client: LovensClient):
@@ -51,6 +51,17 @@ class TestLogin:
     def test_invalid_credentials(self, client: LovensClient):
         with raises(AuthenticationError):
             client._get_aws_cognito_token(username="test", password="user")
+
+    @mark.parametrize("token", ["invalid_token", "at_i1yelzysa43u749it8nv9p7ceub73"])
+    def test_invalid_token(self, client: LovensClient, token: str):
+        client.access_token = token
+        with raises(InvalidTokenError):
+            client.get_bikes()
+        assert client.access_token is None
+
+    def test_no_token(self, client: LovensClient):
+        with raises(NoAccessToken):
+            client.get_bikes()
 
 
 class TestNormalizeDates:
