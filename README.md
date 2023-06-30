@@ -15,8 +15,7 @@ Using the client is as simple as:
 ```python
 from pylovens import LovensClient
 
-client = LovensClient()
-client.login("your_username", "your_secret_password")
+client = LovensClient("your_username", "your_secret_password")
 
 bikes = client.get_bikes()
 ```
@@ -28,8 +27,7 @@ _Note:_ only authentication with email/password is supported.
 
 The `LovensClient` exposes the following methods:
 
- - [Login & User](#login--user)
-   - [`login`](#login---log-in-using-your-username-e-mail-address-and-password)
+ - [User](#user)
    - [`get_user`](#get_user---get-information-on-the-user)
  - [Bikes](#bikes)
    - [`get_bikes`](#get_bikes---fetch-all-bikes-accessible-to-your-user)
@@ -51,17 +49,7 @@ The `LovensClient` exposes the following methods:
    - [`get_geofence`](#get_geofence---get-a-single-geofence-by-its-id)
    - [`get_geofence_stats`](#get_geofence_stats---get-statistics-of-a-geofence)
 
-### Login & User
-
-#### `login` - Log in using your username (e-mail address) and password.
-```python
-def login(self, username: str, password: str) -> None
-```
-
-##### Arguments
-- `username`: Your e-mail address.
-- `password`: The corresponding password.
-
+### User
 
 #### `get_user` - Get information on the user.
 ```python

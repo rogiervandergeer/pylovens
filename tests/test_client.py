@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from itertools import islice
 from os import environ
 from zoneinfo import ZoneInfo
@@ -7,7 +7,7 @@ from pytest import fixture, mark, raises, skip
 from requests import HTTPError
 
 from pylovens import LovensClient
-from pylovens.exceptions import AuthenticationError, InvalidTokenError, NoAccessToken
+from pylovens.exceptions import AuthenticationError, InvalidTokenError
 
 
 class TestHeaders:
@@ -17,14 +17,23 @@ class TestHeaders:
         assert len(headers["User-Agent"].split(".")) in (3, 4)  # Either pylovens x.y.z or pylovens x.y.z.dev0
         assert "+" not in headers["User-Agent"]
 
-    def test_headers_with_auth_without_token(self, client: LovensClient):
-        with raises(NoAccessToken):
-            _ = client._headers_with_auth
+    def test_headers_with_auth_without_token(self, client: LovensClient, mocker):
+        mock = mocker.patch("pylovens.client.LovensClient._login")
+        mock.return_value = ("token", datetime.now(tz=timezone.utc))
+        client._access_token = None
+        _ = client._headers_with_auth
+        mock.assert_called_once()
 
     def test_headers_with_auth(self, client: LovensClient):
-        client.access_token = "token"
+        client._access_token = ("token", datetime.now(tz=timezone.utc) + timedelta(hours=1))
         headers = client._headers_with_auth
         assert headers["Authorization"] == "Bearer token"
+
+    def test_token_expired(self, client: LovensClient, mocker):
+        mock = mocker.patch("pylovens.client.LovensClient._login")
+        client._access_token = ("token", datetime.now(tz=timezone.utc) - timedelta(hours=1))
+        _ = client._headers_with_auth
+        mock.assert_called_once()
 
 
 class TestLogin:
@@ -44,9 +53,9 @@ class TestLogin:
             token = client._get_aws_cognito_token(
                 username=environ["LOVENS_USERNAME"], password=environ["LOVENS_PASSWORD"]
             )
+            assert len(token) > 0
         except KeyError:
             skip("Requires authentication.")
-        assert len(token) > 0
 
     def test_invalid_credentials(self, client: LovensClient):
         with raises(AuthenticationError):
@@ -54,20 +63,15 @@ class TestLogin:
 
     @mark.parametrize("token", ["invalid_token", "at_i1yelzysa43u749it8nv9p7ceub73"])
     def test_invalid_token(self, client: LovensClient, token: str):
-        client.access_token = token
+        client._access_token = (token, datetime.now(tz=timezone.utc) + timedelta(hours=1))
         with raises(InvalidTokenError):
             client.get_bikes()
         assert client.access_token is None
 
-    def test_no_token(self, client: LovensClient):
-        with raises(NoAccessToken):
-            client.get_bikes()
-
 
 class TestNormalizeDates:
     @fixture(scope="function")
-    def client_with_timezone(self) -> LovensClient:
-        client = LovensClient()
+    def client_with_timezone(self, client: LovensClient) -> LovensClient:
         client._timezone = "Europe/Amsterdam"
         return client
 

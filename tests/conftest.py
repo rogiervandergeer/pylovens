@@ -7,17 +7,15 @@ from pylovens import LovensClient
 
 @fixture(scope="function")
 def client() -> LovensClient:
-    return LovensClient()
+    return LovensClient("username", "password")
 
 
 @fixture(scope="session")
 def authenticated_client() -> LovensClient:
-    client = LovensClient()
     try:
-        client.login(environ["LOVENS_USERNAME"], environ["LOVENS_PASSWORD"])
+        return LovensClient(environ["LOVENS_USERNAME"], environ["LOVENS_PASSWORD"])
     except KeyError:
         skip("Requires authentication.")
-    return client
 
 
 @fixture(scope="session")

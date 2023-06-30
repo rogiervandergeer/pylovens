@@ -4,7 +4,3 @@ class AuthenticationError(Exception):
 
 class InvalidTokenError(Exception):
     pass
-
-
-class NoAccessToken(Exception):
-    pass

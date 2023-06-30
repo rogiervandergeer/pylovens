@@ -1,5 +1,5 @@
 from base64 import b64encode, urlsafe_b64encode
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from functools import partial
 from hashlib import sha256
 from itertools import islice
@@ -13,15 +13,16 @@ from zoneinfo import ZoneInfo
 from requests import Response, get, post
 
 from pylovens._version import __version__
-from pylovens.exceptions import AuthenticationError, InvalidTokenError, NoAccessToken
+from pylovens.exceptions import AuthenticationError, InvalidTokenError
 
 
 class LovensClient:
     client_id: str = "7d5d1a2a-3f6e-45c6-9e9e-b0b5f224f8a5"
     client_secret: str = ""
 
-    def __init__(self):
-        self.access_token: str | None = None
+    def __init__(self, username: str, password: str):
+        self.credentials: tuple[str, str] = (username, password)
+        self._access_token: tuple[str, datetime] | None = None
         self._login_settings_: dict | None = None
         self._timezone: str | None = None
 
@@ -521,19 +522,6 @@ class LovensClient:
         self._timezone = data["timezone"]
         return self._parse_dates(data)
 
-    def login(self, username: str, password: str) -> None:
-        """
-        Log in using your username (e-mail address) and password.
-
-        Args:
-            username: Your e-mail address.
-            password: The corresponding password.
-        """
-        token = self._get_aws_cognito_token(username, password)
-        challenge, verifier = self._create_code_challenge()
-        challenge_result = self._send_code_challenge(challenge, token)
-        self.access_token = self._get_access_token(code=challenge_result, verifier=verifier)
-
     @property
     def timezone(self) -> ZoneInfo:
         """The timezone of your user."""
@@ -549,6 +537,13 @@ class LovensClient:
         code_challenge = urlsafe_b64encode(code_challenge).decode("utf-8")
         code_challenge = code_challenge.replace("=", "")
         return code_challenge, code_verifier
+
+    def _login(self) -> tuple[str, datetime]:
+        """Log in using username (e-mail address) and password."""
+        token = self._get_aws_cognito_token(*self.credentials)
+        challenge, verifier = self._create_code_challenge()
+        challenge_result = self._send_code_challenge(challenge, token)
+        return self._get_access_token(code=challenge_result, verifier=verifier)
 
     @property
     def _login_settings(self) -> dict:
@@ -595,7 +590,7 @@ class LovensClient:
         self._handle_errors(response)
         return response.json()["AuthenticationResult"]["AccessToken"]
 
-    def _get_access_token(self, code: str, verifier: str) -> str:
+    def _get_access_token(self, code: str, verifier: str) -> tuple[str, datetime]:
         """Sign in with Lovens using the previously obtained code and obtain the bearer token."""
         redirect_uri = self._login_settings["login_page_allowed_redirect_uris"][0]
         content = f"""code={code}&code_verifier={verifier}&redirect_uri={redirect_uri}&grant_type=authorization_code"""
@@ -608,8 +603,9 @@ class LovensClient:
                 **self._headers,
             },
         )
-        self._handle_errors(response)
-        return response.json()["access_token"]
+        response.raise_for_status()
+        data = response.json()
+        return data["access_token"], datetime.strptime(data["expires_at"][:-4] + "Z", "%Y-%m-%dT%H:%M:%S.%f%z")
 
     def _send_code_challenge(self, code_challenge: str, cognito_token: str) -> str:
         """Send a code challenge and the AWS Cognito token."""
@@ -643,9 +639,9 @@ class LovensClient:
     @property
     def _headers_with_auth(self) -> dict[str, str]:
         """The headers including authorization. Only possible when authenticated."""
-        if self.access_token is None:
-            raise NoAccessToken(f"{self.__class__.__name__} has no access token.")
-        return {"Authorization": f"Bearer {self.access_token}", **self._headers}
+        if self._access_token is None or self._access_token[1] < datetime.now(tz=timezone.utc):
+            self._access_token = self._login()
+        return {"Authorization": f"Bearer {self._access_token[0]}", **self._headers}
 
     def _parse_dates(self, data: dict[str], keys: set[str] | None = None) -> dict[str]:
         """Parse datetimes in a dictionary."""
