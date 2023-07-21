@@ -82,16 +82,7 @@ class LovensClient:
 
             Note that 'battery_percentage' is None when the bike is turned off.
         """
-        if start_date is not None:
-            if not isinstance(start_date, datetime):
-                start_date = datetime.combine(start_date, time(0, 0, tzinfo=self.timezone))
-            elif start_date.tzinfo is None:
-                start_date = start_date.astimezone(self.timezone)
-        if end_date is not None:
-            if not isinstance(end_date, datetime):
-                end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=self.timezone))
-            elif end_date.tzinfo is None:
-                end_date = end_date.astimezone(self.timezone)
+        start_date, end_date = self._normalise_dates(start_date, end_date)
 
         url = f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/battery?"
         if start_date is not None:
