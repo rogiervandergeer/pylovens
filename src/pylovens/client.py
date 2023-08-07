@@ -82,7 +82,8 @@ class LovensClient:
 
             Note that 'battery_percentage' is None when the bike is turned off.
         """
-        start_date, end_date = self._normalise_dates(start_date, end_date)
+        start_date = self._normalise_date(start_date, end=False) if start_date else None
+        end_date = self._normalise_date(end_date, end=True) if end_date else None
 
         url = f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/battery?"
         if start_date is not None:
@@ -218,10 +219,11 @@ class LovensClient:
         """
         if (start_date is None) != (end_date is None):
             raise ValueError("Either start_date and end_date must both be None, or both be provided.")
-        start_date, end_date = self._normalise_dates(start_date, end_date)
 
         url = f"https://lovens.api.bike.conneq.tech/bike/geofence/{geofence_id}/stats"
-        if start_date is not None:
+        if start_date is not None and end_date is not None:
+            start_date = self._normalise_date(start_date, end=False)
+            end_date = self._normalise_date(end_date, end=True)
             url += (
                 f"?from={quote(start_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}&"
                 f"till={quote(end_date.strftime('%Y-%m-%dT%H:%M:%S%z'))}"
@@ -298,7 +300,8 @@ class LovensClient:
                 "is_moving": True
             }
         """
-        start_date, end_date = self._normalise_dates(start_date, end_date)
+        start_date = self._normalise_date(start_date, end=False)
+        end_date = self._normalise_date(end_date, end=True)
 
         response = get(
             f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/location?"
@@ -480,7 +483,8 @@ class LovensClient:
                 'elevation_down': 232
               }
         """
-        start_date, end_date = self._normalise_dates(start_date, end_date)
+        start_date = self._normalise_date(start_date, end=False)
+        end_date = self._normalise_date(end_date, end=True)
 
         response = get(
             f"https://lovens.api.bike.conneq.tech/bike/{bike_id}/stats?"
@@ -650,36 +654,25 @@ class LovensClient:
             raise InvalidTokenError()
         response.raise_for_status()
 
-    def _normalise_dates(
-        self, start_date: datetime | date | None, end_date: datetime | date | None
-    ) -> tuple[datetime | None, datetime | None]:
+    def _normalise_date(self, dt: datetime | date, end: bool) -> datetime:
         """
-        Normalise a date range input.
+        Normalise a date to a datetime.
 
-        If start_date and/or end_date is a date object, they are interpreted as the start and end of the day
-        respectively. Timezone-naive datetime objects are converted to the user's timezone (see get_user).
-
-        Nones are passed trough.
+        If dt is a date object, it are interpreted as the start and/or end of the day, according
+        to the end input. Timezone-naive datetime objects are converted to the user's timezone (see get_user).
 
         Args:
-            start_date: datetime, date or None
-            end_date: datetime, date or None
+            dt: datetime or date
 
         Returns:
-            [datetime | None, datetime | None]
+            datetime
         """
-        if start_date is None:
-            pass
-        elif not isinstance(start_date, datetime):  # start_date is a date
-            start_date = datetime.combine(start_date, time(0, 0, tzinfo=self.timezone))
-        elif start_date.tzinfo is None:
-            start_date = start_date.replace(tzinfo=self.timezone)
-
-        if end_date is None:
-            pass
-        elif not isinstance(end_date, datetime):
-            end_date = datetime.combine(end_date, time(23, 59, 59, tzinfo=self.timezone))
-        elif end_date.tzinfo is None:
-            end_date = end_date.replace(tzinfo=self.timezone)
-
-        return start_date, end_date
+        if not isinstance(dt, datetime):  # Then it is a date
+            return datetime.combine(
+                date=dt,
+                time=time(23, 59, 59, tzinfo=self.timezone) if end else time(0, 0, tzinfo=self.timezone),
+            )
+        elif dt.tzinfo is None:
+            return dt.replace(tzinfo=self.timezone)
+        else:
+            return dt
