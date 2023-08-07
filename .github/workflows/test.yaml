@@ -24,5 +24,8 @@ jobs:
         run: |
           pip3 install -e ".[dev]"
 
+      - name: Run pre-commit
+        run: pre-commit run --all-files
+
       - name: Run Pytest
         run: pytest
