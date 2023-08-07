@@ -170,7 +170,8 @@ class TestMisc:
         assert isinstance(health[0]["value"], datetime)
         assert isinstance(health[1]["value"], datetime)
         assert isinstance(health[2]["value"], str)
-        assert isinstance(health[3]["value"], str)
+        if len(health) == 4:
+            assert isinstance(health[3]["value"], str)
 
 
 class TestGeofences:

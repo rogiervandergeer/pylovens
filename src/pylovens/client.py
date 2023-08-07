@@ -241,7 +241,8 @@ class LovensClient:
             bike_id: The ID of the bike.
 
         Returns:
-            A list of four dictionaries:
+            A list of three or four dictionaries, where the key 'gps_battery' may be missing is the last connection was
+            long ago:
             [
               {
                 'key': 'last_connection',
