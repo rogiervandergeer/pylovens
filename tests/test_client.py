@@ -138,7 +138,7 @@ class TestRides:
         )
         for location in locations:
             assert isinstance(location["date"], datetime)
-            assert location["date"] >= locations[0]["date"]
+            assert location["date"] >= locations[0]["date"]  # type: ignore
 
     def test_get_ride(self, authenticated_client: LovensClient, ride: dict):
         ride_ = authenticated_client.get_ride(ride["id"])

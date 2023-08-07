@@ -1,12 +1,12 @@
 from base64 import b64encode, urlsafe_b64encode
-from datetime import datetime, date, time, timezone
+from datetime import date, datetime, time, timezone
 from functools import partial
 from hashlib import sha256
 from itertools import islice
 from json import dumps
 from os import urandom
 from re import sub
-from typing import Iterable
+from typing import Any, Iterable
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
@@ -26,7 +26,7 @@ class LovensClient:
         self._login_settings_: dict | None = None
         self._timezone: str | None = None
 
-    def get_battery_state(self, bike_id: int) -> dict[str]:
+    def get_battery_state(self, bike_id: int) -> dict[str, bool | datetime | int]:
         """
         Get the state of the battery of a bike.
 
@@ -275,7 +275,7 @@ class LovensClient:
 
     def get_location(
         self, bike_id: int, start_date: datetime | date, end_date: datetime | date
-    ) -> list[dict, bool, datetime | int | float]:
+    ) -> list[dict[str, bool | datetime | int | float]]:
         """
         Get location history in a time range.
 
@@ -419,7 +419,7 @@ class LovensClient:
         if data["meta"]["total_records"] > data["meta"]["offset"] + data["meta"]["limit"]:
             yield from self.iterate_rides(bike_id=bike_id, batch_size=batch_size, _offset=_offset + batch_size)
 
-    def get_state(self, bike_id: int) -> dict[str]:
+    def get_state(self, bike_id: int) -> dict[str, bool | datetime | int]:
         """
         Get the state of a bike.
 
@@ -511,7 +511,7 @@ class LovensClient:
                 ...
             }
         """
-        response = get(f"https://lovens.api.bike.conneq.tech/user/me", headers=self._headers_with_auth)
+        response = get("https://lovens.api.bike.conneq.tech/user/me", headers=self._headers_with_auth)
         self._handle_errors(response)
         data = response.json()
         self._timezone = data["timezone"]
@@ -522,15 +522,14 @@ class LovensClient:
         """The timezone of your user."""
         if self._timezone is None:
             self.get_user()
-        return ZoneInfo(self._timezone)
+        return ZoneInfo(self._timezone)  # type: ignore
 
     @staticmethod
     def _create_code_challenge() -> tuple[str, str]:
-        code_verifier = urlsafe_b64encode(urandom(40)).decode("utf-8")
-        code_verifier = sub("[^a-zA-Z0-9]+", "", code_verifier)
-        code_challenge = sha256(code_verifier.encode("utf-8")).digest()
-        code_challenge = urlsafe_b64encode(code_challenge).decode("utf-8")
-        code_challenge = code_challenge.replace("=", "")
+        code_verifier = sub("[^a-zA-Z0-9]+", "", urlsafe_b64encode(urandom(40)).decode("utf-8"))
+        code_challenge = (
+            urlsafe_b64encode(sha256(code_verifier.encode("utf-8")).digest()).decode("utf-8").replace("=", "")
+        )
         return code_challenge, code_verifier
 
     def _login(self) -> tuple[str, datetime]:
@@ -638,7 +637,7 @@ class LovensClient:
             self._access_token = self._login()
         return {"Authorization": f"Bearer {self._access_token[0]}", **self._headers}
 
-    def _parse_dates(self, data: dict[str], keys: set[str] | None = None) -> dict[str]:
+    def _parse_dates(self, data: dict[str, Any], keys: set[str] | None = None) -> dict[str, Any]:
         """Parse datetimes in a dictionary."""
         return {
             key: datetime.strptime(value, "%Y-%m-%dT%H:%M:%S%z").astimezone(self.timezone)

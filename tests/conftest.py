@@ -1,3 +1,5 @@
+# mypy: disable-error-code="return"
+
 from os import environ
 
 from pytest import fixture, skip
