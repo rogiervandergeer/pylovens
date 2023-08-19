@@ -642,7 +642,8 @@ class LovensClient:
         """Parse datetimes in a dictionary."""
         return {
             key: datetime.strptime(value, "%Y-%m-%dT%H:%M:%S%z").astimezone(self.timezone)
-            if (keys is not None and key in keys) or (keys is None and (key.endswith("_date") or key == "date"))
+            if value is not None
+            and ((keys is not None and key in keys) or (keys is None and (key.endswith("_date") or key == "date")))
             else value
             for key, value in data.items()
         }

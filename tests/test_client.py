@@ -163,7 +163,7 @@ class TestMisc:
     def test_get_state(self, authenticated_client: LovensClient, bike_id: int):
         state = authenticated_client.get_state(bike_id)
         assert "powered_on" in state
-        assert isinstance(state["last_full_charge"], datetime)
+        assert isinstance(state["last_full_charge"], datetime) or state["last_full_charge"] is None
 
     def test_get_health(self, authenticated_client: LovensClient, bike_id: int):
         health = authenticated_client.get_health(bike_id)
