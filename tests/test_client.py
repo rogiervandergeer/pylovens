@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from itertools import islice
 from os import environ
 from zoneinfo import ZoneInfo
@@ -176,6 +176,10 @@ class TestMisc:
 
 class TestGeofences:
     @fixture(scope="class")
+    def start_date(self) -> date:
+        return date.today() - timedelta(days=37)
+
+    @fixture(scope="class")
     def geofence(self, authenticated_client: LovensClient, bike_id: int) -> dict:
         geofence_data = authenticated_client.get_geofences(bike_id)
         if len(geofence_data) == 0:
@@ -194,70 +198,77 @@ class TestGeofences:
         assert len(geofence_stats) == 1
         assert "entries_all_time" in geofence_stats
 
-    def test_get_geofence_stats(self, authenticated_client: LovensClient, geofence: dict):
+    def test_get_geofence_stats(self, authenticated_client: LovensClient, geofence: dict, start_date: date):
         geofence_stats = authenticated_client.get_geofence_stats(
-            geofence["id"], geofence["creation_date"], geofence["creation_date"] + timedelta(days=7)
+            geofence["id"], start_date, start_date + timedelta(days=7)
         )
         assert geofence_stats.keys() == {"entries_all_time", "entries_in_timespan"}
 
 
 class TestStatistics:
-    def test_get_daily_statistics(self, authenticated_client: LovensClient, bike_id: int):
-        stats = authenticated_client.get_statistics(bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5))
+    @fixture(scope="class")
+    def start_date(self) -> date:
+        return date.today() - timedelta(days=37)
+
+    def test_get_daily_statistics(self, authenticated_client: LovensClient, bike_id: int, start_date: date):
+        end_date = start_date + timedelta(days=4)
+        stats = authenticated_client.get_statistics(bike_id, start_date=start_date, end_date=end_date)
         assert len(stats) == 5  # There are 5 days in the range.
-        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[0]["from"] == datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")))
+        assert stats[-1]["till"] == datetime.combine(end_date, time(23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")))
 
-    def test_get_hourly_statistics(self, authenticated_client: LovensClient, bike_id: int):
-        stats = authenticated_client.get_statistics(
-            bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5), type="hourly"
-        )
+    def test_get_hourly_statistics(self, authenticated_client: LovensClient, bike_id: int, start_date: date):
+        end_date = start_date + timedelta(days=4)
+        stats = authenticated_client.get_statistics(bike_id, start_date=start_date, end_date=end_date, type="hourly")
         assert len(stats) == 5 * 24  # There are 5 days * 24 hours in the range.
-        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[0]["from"] == datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")))
+        assert stats[-1]["till"] == datetime.combine(end_date, time(23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")))
 
-    def test_get_monthly_statistics(self, authenticated_client: LovensClient, bike_id: int):
-        stats = authenticated_client.get_statistics(
-            bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5), type="monthly"
-        )
+    def test_get_monthly_statistics(self, authenticated_client: LovensClient, bike_id: int, start_date: date):
+        end_date = start_date + timedelta(days=4)
+        stats = authenticated_client.get_statistics(bike_id, start_date=start_date, end_date=end_date, type="monthly")
         assert len(stats) == 1  # The range falls in one month.
-        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[0]["from"] == datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")))
+        assert stats[-1]["till"] == datetime.combine(end_date, time(23, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")))
 
-    def test_stats_date_tz(self, authenticated_client: LovensClient, bike_id: int):
+    def test_stats_date_tz(self, authenticated_client: LovensClient, bike_id: int, start_date: date):
+        end_date = start_date + timedelta(days=4)
         authenticated_client._timezone = "Asia/Singapore"
-        stats = authenticated_client.get_statistics(bike_id, start_date=date(2023, 4, 1), end_date=date(2023, 4, 5))
+        stats = authenticated_client.get_statistics(bike_id, start_date=start_date, end_date=end_date)
         authenticated_client._timezone = None
         assert len(stats) == 5  # There are 5 days in the range.
-        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Asia/Singapore"))
-        assert stats[-1]["till"] == datetime(2023, 4, 5, 23, 59, 59, tzinfo=ZoneInfo("Asia/Singapore"))
+        assert stats[0]["from"] == datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Asia/Singapore")))
+        assert stats[-1]["till"] == datetime.combine(end_date, time(23, 59, 59, tzinfo=ZoneInfo("Asia/Singapore")))
 
-    def test_stats_datetime_naive(self, authenticated_client: LovensClient, bike_id: int):
-        stats = authenticated_client.get_statistics(
-            bike_id, start_date=datetime(2023, 4, 1, 0, 0), end_date=datetime(2023, 4, 1, 12, 59, 59), type="hourly"
-        )
-        assert len(stats) == 13
-        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-        assert stats[-1]["till"] == datetime(2023, 4, 1, 12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
-
-    def test_stats_datetime_tz(self, authenticated_client: LovensClient, bike_id: int):
+    def test_stats_datetime_naive(self, authenticated_client: LovensClient, bike_id: int, start_date: date):
         stats = authenticated_client.get_statistics(
             bike_id,
-            start_date=datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")),
-            end_date=datetime(2023, 4, 1, 12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")),
+            start_date=datetime.combine(start_date, time(0, 0)),
+            end_date=datetime.combine(start_date, time(12, 59, 59)),
             type="hourly",
         )
         assert len(stats) == 13
-        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-        assert stats[-1]["till"] == datetime(2023, 4, 1, 12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[0]["from"] == datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")))
+        assert stats[-1]["till"] == datetime.combine(start_date, time(12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")))
 
-    def test_stats_datetime_partial(self, authenticated_client: LovensClient, bike_id: int):
+    def test_stats_datetime_tz(self, authenticated_client: LovensClient, bike_id: int, start_date: date):
         stats = authenticated_client.get_statistics(
             bike_id,
-            start_date=datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")),
-            end_date=datetime(2023, 4, 1, 12, 30, 0, tzinfo=ZoneInfo("Europe/Amsterdam")),
+            start_date=datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))),
+            end_date=datetime.combine(start_date, time(12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))),
             type="hourly",
         )
         assert len(stats) == 13
-        assert stats[0]["from"] == datetime(2023, 4, 1, 0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-        assert stats[-1]["till"] == datetime(2023, 4, 1, 12, 30, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
+        assert stats[0]["from"] == datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")))
+        assert stats[-1]["till"] == datetime.combine(start_date, time(12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")))
+
+    def test_stats_datetime_partial(self, authenticated_client: LovensClient, bike_id: int, start_date: date):
+        stats = authenticated_client.get_statistics(
+            bike_id,
+            start_date=datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))),
+            end_date=datetime.combine(start_date, time(12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam"))),
+            type="hourly",
+        )
+        assert len(stats) == 13
+        assert stats[0]["from"] == datetime.combine(start_date, time(0, 0, tzinfo=ZoneInfo("Europe/Amsterdam")))
+        assert stats[-1]["till"] == datetime.combine(start_date, time(12, 59, 59, tzinfo=ZoneInfo("Europe/Amsterdam")))
